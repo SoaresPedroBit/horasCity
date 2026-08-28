@@ -964,6 +964,85 @@ window.addEventListener('keydown', (ev) => {
 });
 window.addEventListener('keyup', (ev) => teclas.delete(ev.code));
 
+// ---------------------------------------------------------------------------
+// Joystick de toque — pilotar no celular, onde não existe WASD
+// ---------------------------------------------------------------------------
+
+const controlesToque = document.getElementById('controles-toque');
+const joystick = document.getElementById('joystick');
+const manete = document.getElementById('joystick-manete');
+const btnTurbo = document.getElementById('btn-turbo');
+
+// Só aparece em tela de toque: com mouse e teclado o joystick apenas tomaria
+// espaço da cidade, já que o WASD comanda melhor.
+const temToque = window.matchMedia('(pointer: coarse)').matches;
+
+// Eixos da manete, de -1 a 1. São somados ao teclado no controle de voo, então
+// quem tem os dois pode usar qualquer um deles.
+const comandoToque = { x: 0, y: 0, turbo: false };
+
+let ponteiroJoystick = null;
+
+function moverManete(ev) {
+  const area = joystick.getBoundingClientRect();
+  const raio = area.width / 2;
+  let dx = (ev.clientX - (area.left + raio)) / raio;
+  let dy = (ev.clientY - (area.top + raio)) / raio;
+
+  // Dedo além da borda ainda comanda, mas preso no limite do círculo — sem
+  // isto, arrastar para longe daria uma curva mais fechada que o máximo.
+  const dist = Math.hypot(dx, dy);
+  if (dist > 1) {
+    dx /= dist;
+    dy /= dist;
+  }
+
+  comandoToque.x = dx;
+  comandoToque.y = -dy; // a tela cresce para baixo; no voo, para cima é subir
+  manete.style.transform = `translate(${dx * raio * 0.6}px, ${dy * raio * 0.6}px)`;
+}
+
+function zerarComandoToque() {
+  ponteiroJoystick = null;
+  comandoToque.x = 0;
+  comandoToque.y = 0;
+  comandoToque.turbo = false;
+  manete.style.transform = 'translate(0px, 0px)';
+  btnTurbo.classList.remove('ativo');
+}
+
+joystick.addEventListener('pointerdown', (ev) => {
+  ponteiroJoystick = ev.pointerId;
+  // captura: o dedo pode sair do círculo no meio da curva sem perder o comando
+  joystick.setPointerCapture(ev.pointerId);
+  moverManete(ev);
+});
+
+joystick.addEventListener('pointermove', (ev) => {
+  if (ev.pointerId === ponteiroJoystick) moverManete(ev);
+});
+
+// pointercancel junto do pointerup: sem ele, uma interrupção do sistema (uma
+// chamada, um gesto do Android) deixaria o avião girando sozinho para sempre.
+for (const evento of ['pointerup', 'pointercancel']) {
+  joystick.addEventListener(evento, (ev) => {
+    if (ev.pointerId === ponteiroJoystick) zerarComandoToque();
+  });
+}
+
+btnTurbo.addEventListener('pointerdown', (ev) => {
+  btnTurbo.setPointerCapture(ev.pointerId);
+  comandoToque.turbo = true;
+  btnTurbo.classList.add('ativo');
+});
+
+for (const evento of ['pointerup', 'pointercancel']) {
+  btnTurbo.addEventListener(evento, () => {
+    comandoToque.turbo = false;
+    btnTurbo.classList.remove('ativo');
+  });
+}
+
 const btnAviao = document.getElementById('btn-aviao');
 const dicasVoo = document.getElementById('dicas-voo');
 btnAviao.addEventListener('click', () => {
@@ -976,6 +1055,8 @@ function alternarModoAviao() {
   aviao.visible = modoAviao;
   controls.enabled = !modoAviao;
   dicasVoo.hidden = !modoAviao;
+  controlesToque.hidden = !(modoAviao && temToque);
+  zerarComandoToque(); // sai do avião sem deixar comando preso da última curva
   btnAviao.classList.toggle('ativo', modoAviao);
   btnAviao.textContent = modoAviao ? '🛬 Sair do avião' : '✈️ Pilotar avião';
 
@@ -1015,8 +1096,11 @@ const _posCamera = new THREE.Vector3();
 const _alvoOlhar = new THREE.Vector3();
 
 function atualizarAviao(dt) {
-  const subir = (teclas.has('KeyW') ? 1 : 0) - (teclas.has('KeyS') ? 1 : 0);
-  const turbo = teclas.has('ShiftLeft') || teclas.has('ShiftRight');
+  // Teclado e joystick somam. O joystick é analógico, então subir e virar
+  // podem valer frações: meia inclinação faz meia curva.
+  const subir = THREE.MathUtils.clamp(
+    (teclas.has('KeyW') ? 1 : 0) - (teclas.has('KeyS') ? 1 : 0) + comandoToque.y, -1, 1);
+  const turbo = teclas.has('ShiftLeft') || teclas.has('ShiftRight') || comandoToque.turbo;
   const velocidade = turbo ? 60 : 30;
 
   let virar;
@@ -1034,7 +1118,9 @@ function atualizarAviao(dt) {
       virar = manobraRetorno.sentido;
     }
   } else {
-    virar = (teclas.has('KeyA') ? 1 : 0) - (teclas.has('KeyD') ? 1 : 0);
+    // x da manete cresce para a direita; virar é positivo para a esquerda
+    virar = THREE.MathUtils.clamp(
+      (teclas.has('KeyA') ? 1 : 0) - (teclas.has('KeyD') ? 1 : 0) - comandoToque.x, -1, 1);
   }
 
   estadoAviao.yaw += virar * taxaGiro * dt;

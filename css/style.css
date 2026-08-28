@@ -369,3 +369,114 @@ html, body {
     display: none;
   }
 }
+
+/* ---------- Joystick de toque (modo avião no celular) ---------- */
+
+/* A camada cobre a tela inteira, mas só o joystick e o TURBO recebem o toque:
+   o resto continua livre para os gestos da cidade. */
+#controles-toque {
+  position: fixed;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+}
+
+#controles-toque[hidden] {
+  display: none;
+}
+
+/* Com o joystick na tela o rodapé fica embaixo dele em telas estreitas */
+#controles-toque:not([hidden]) ~ #rodape {
+  display: none;
+}
+
+#joystick {
+  position: absolute;
+  left: 24px;
+  bottom: 32px;
+  width: 132px;
+  height: 132px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: rgba(13, 18, 32, 0.55);
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+  /* sem isto o dedo arrasta a página e dá zoom em vez de pilotar */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Cruz de referência: mostra os eixos sem competir com a manete */
+#joystick::before,
+#joystick::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: var(--border);
+}
+
+#joystick::before {
+  width: 1px;
+  height: 66%;
+  transform: translate(-50%, -50%);
+}
+
+#joystick::after {
+  width: 66%;
+  height: 1px;
+  transform: translate(-50%, -50%);
+}
+
+#joystick-manete {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 58px;
+  height: 58px;
+  margin: -29px 0 0 -29px;
+  border: 1px solid #5ad0e0;
+  border-radius: 50%;
+  background: rgba(90, 208, 224, 0.3);
+  box-shadow: 0 0 18px rgba(90, 208, 224, 0.25);
+}
+
+#btn-turbo {
+  position: absolute;
+  right: 24px;
+  bottom: 50px;
+  width: 92px;
+  height: 92px;
+  border: 1px solid rgba(247, 178, 59, 0.55);
+  border-radius: 50%;
+  background: rgba(247, 178, 59, 0.16);
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#btn-turbo.ativo {
+  background: rgba(247, 178, 59, 0.34);
+}
+
+/* As dicas de voo falam de teclas que não existem num aparelho de toque */
+.so-toque {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .so-teclado {
+    display: none;
+  }
+
+  .so-toque {
+    display: inline;
+  }
+}
