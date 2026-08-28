@@ -1,0 +1,24 @@
+{
+  "_aviso": "Arquivo PÚBLICO. Nunca inclua RA, nome completo, e-mail ou qualquer valor derivado do RA aqui. O campo id é aleatório e não tem relação matemática com o RA.",
+  "atualizadoEm": "2026-08-26T12:00:00Z",
+  "participantes": [
+    { "id": "9896194fbbde957e", "apelido": "Pedro S.", "horas": 125 },
+    { "id": "9521699d1e4d54fb", "apelido": "Marina",   "horas": 107 },
+    { "id": "ca27cf7a32a23805", "apelido": "Jão",      "horas": 90 },
+    { "id": "e5d4c3e5123aa893", "apelido": "Bia",      "horas": 98 },
+    { "id": "a025cf4c1c901cb0", "apelido": "Luquinha", "horas": 35 },
+    { "id": "bfb15181fe89d264", "apelido": "Fer",      "horas": 102 },
+    { "id": "6ee436ee29fe2cce", "apelido": "Gabs",     "horas": 69 },
+    { "id": "9ec594a48fa93621", "apelido": "Tico",     "horas": 75 },
+    { "id": "470d9bb8e9e97fc9", "apelido": "Nanda",    "horas": 105 },
+    { "id": "63631f9bce4acf76", "apelido": "Vitim",    "horas": 31 },
+    { "id": "a770bf280948a6c2", "apelido": "Carol",    "horas": 115 },
+    { "id": "805e57e62acd3abd", "apelido": "Dudu",     "horas": 42 },
+    { "id": "9b4aa9adb0a907e1", "apelido": "Lets",     "horas": 87 },
+    { "id": "fc863ceaa717b446", "apelido": "Rafa",     "horas": 100 },
+    { "id": "637a4af49bcf9976", "apelido": "Mel",      "horas": 24 },
+    { "id": "41085b0bc97deff6", "apelido": "Guto",     "horas": 97 },
+    { "id": "e2d113af9211f4b4", "apelido": "Ju",       "horas": 16 },
+    { "id": "64b8c7d0f286219c", "apelido": "Thi",      "horas": 53 }
+  ]
+}

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>horasCity — a cidade das horas complementares</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="city-canvas"></canvas>
+
+  <header id="topbar">
+    <h1>🏙️ horasCity</h1>
+    <div id="stats">
+      <span><strong id="stat-participantes">0</strong> / <span id="stat-max">100</span> prédios</span>
+      <span><strong id="stat-horas">0</strong> horas na cidade</span>
+    </div>
+    <button id="btn-aviao">✈️ Pilotar avião</button>
+    <button id="btn-meu-predio" hidden>📍 Meu prédio</button>
+    <button id="btn-participar">＋ Participar da cidade</button>
+  </header>
+
+  <div id="aviso-barreira" hidden>🚧 Limite do mapa — retornando à cidade</div>
+
+  <div id="dicas-voo" hidden>
+    <strong>✈️ Modo avião</strong>
+    <span><kbd>W</kbd>/<kbd>S</kbd> subir · descer</span>
+    <span><kbd>A</kbd>/<kbd>D</kbd> virar</span>
+    <span><kbd>Shift</kbd> turbo</span>
+    <span><kbd>Esc</kbd> sair</span>
+  </div>
+
+  <div id="tooltip" hidden></div>
+
+  <div id="modal-overlay" hidden>
+    <div id="modal">
+      <h2>Participar da horasCity</h2>
+      <p class="modal-desc">
+        Suas horas complementares serão consultadas no sistema da faculdade e
+        seu prédio passará a fazer parte da cidade.
+      </p>
+      <form id="form-participar" autocomplete="off">
+        <label>
+          RA (Registro Acadêmico)
+          <input type="text" id="input-ra" required pattern="\d{4,12}"
+                 inputmode="numeric" autocomplete="off" placeholder="Ex.: 20231234" />
+          <small class="campo-ajuda">
+            Usado só para buscar suas horas neste momento. Não é salvo no
+            navegador nem publicado na cidade.
+          </small>
+        </label>
+        <label>
+          Apelido exibido na cidade
+          <input type="text" id="input-apelido" required maxlength="20" placeholder="Como você quer aparecer" />
+          <small class="campo-ajuda">
+            Fica público. Não use seu RA nem seu nome completo se não quiser
+            ser identificado.
+          </small>
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" id="input-consentimento" required />
+          Aceito que meu apelido e total de horas fiquem visíveis publicamente
+          na cidade. Posso sair quando quiser.
+        </label>
+        <p class="privacidade-note">
+          🔒 A cidade pública guarda apenas apelido, horas e um código
+          aleatório. Ninguém consegue descobrir seu RA a partir dela.
+        </p>
+        <p class="demo-note">
+          ⚠️ Modo demonstração: as horas serão geradas de forma fictícia.
+          Na versão final este passo consulta a API da faculdade.
+        </p>
+        <p id="form-erro" role="alert" hidden></p>
+        <div class="modal-actions">
+          <button type="button" id="btn-cancelar">Cancelar</button>
+          <button type="submit" id="btn-confirmar">Entrar na cidade</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer id="rodape">
+    Demonstração com dados fictícios · arraste para passear, role para aproximar
+  </footer>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
