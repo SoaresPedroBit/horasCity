@@ -1,7 +1,7 @@
 # 🏙️ horasCity
 
 Uma cidade 3D onde cada prédio é um aluno e a altura do prédio são as horas
-complementares dele no sistema da faculdade. Inspirado no
+Blackboard dele no sistema da faculdade. Inspirado no
 [GitHub City](https://github.com/honzaap/GithubCity) / conceito CodeCity.
 
 Qualquer pessoa pode passear pela cidade. Um aluno pode informar seu RA,
