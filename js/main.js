@@ -1054,7 +1054,10 @@ function alternarModoAviao() {
   modoAviao = !modoAviao;
   aviao.visible = modoAviao;
   controls.enabled = !modoAviao;
-  dicasVoo.hidden = !modoAviao;
+  // No toque quem manda é o joystick: o painel só falaria de teclas que não
+  // existem ali e tomaria tela. Mesma condição que mostra os controles, para
+  // as duas decisões não divergirem.
+  dicasVoo.hidden = !modoAviao || temToque;
   controlesToque.hidden = !(modoAviao && temToque);
   zerarComandoToque(); // sai do avião sem deixar comando preso da última curva
   btnAviao.classList.toggle('ativo', modoAviao);

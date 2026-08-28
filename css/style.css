@@ -466,10 +466,3 @@ html, body {
   background: rgba(247, 178, 59, 0.34);
 }
 
-/* No toque as dicas falam de teclas que não existem e o joystick dispensa
-   legenda — o painel só tomaria tela */
-@media (pointer: coarse) {
-  #dicas-voo {
-    display: none;
-  }
-}
