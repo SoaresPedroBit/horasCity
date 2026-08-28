@@ -17,8 +17,15 @@ const CHAVE_MEU_ID = 'horascity:meu-id';
 // Espaçamento entre prédios na malha. Os prédios têm 6–9 de largura, então
 // 24 deixa ruas largas o bastante para atravessar de avião com folga.
 const TAMANHO_CELULA = 24;
-const ALTURA_POR_HORA = 0.35;   // 1 hora complementar = 0.35 unidades de altura
+const ALTURA_POR_HORA = 0.35;   // 1 hora Blackboard = 0.35 unidades de altura
 const ALTURA_MINIMA = 2;
+
+// Malha viária. As vias correm pelo meio do vão entre duas fileiras: o maior
+// lote ocupa 15 das 24 unidades da célula, então uma pista de 8 passa entre as
+// calçadas sem encostar em nenhuma delas.
+const LARGURA_RUA = 8;
+const TRACO_COMPRIMENTO = 5;   // faixa central tracejada
+const TRACO_LARGURA = 0.35;
 
 // Outdoor no telhado: dois postes e o painel com o apelido. As medidas são
 // fixas (não acompanham a altura do prédio) para que o letreiro tenha o mesmo
@@ -139,6 +146,108 @@ function criarTexturaJanelas() {
 }
 
 const texturaJanelasBase = criarTexturaJanelas();
+
+// ---------------------------------------------------------------------------
+// Ruas
+// ---------------------------------------------------------------------------
+
+const grupoRuas = new THREE.Group();
+scene.add(grupoRuas);
+
+// Um plano unitário deitado, reaproveitado por toda a malha viária: cada peça
+// é o mesmo retângulo esticado pela escala do mesh. Assim a cidade pode ser
+// reconstruída quantas vezes for sem gerar geometria nova a cada vez.
+const geoPistaUnitaria = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+const materialAsfalto = new THREE.MeshLambertMaterial({ color: 0x1b2130 });
+const materialFaixa = new THREE.MeshBasicMaterial({ color: 0xd8c98a });
+
+// As vias dos dois eixos se cruzam no mesmo plano e brigariam no z-buffer;
+// dois milésimos de diferença resolvem sem que o degrau apareça.
+const Y_VIA_Z = 0.05;   // vias que correm ao longo de Z
+const Y_VIA_X = 0.052;  // vias que correm ao longo de X
+const Y_FAIXA = 0.07;   // faixa central, acima das duas camadas de asfalto
+
+function criarPista(x, z, largura, comprimento, y) {
+  const pista = new THREE.Mesh(geoPistaUnitaria, materialAsfalto);
+  pista.position.set(x, y, z);
+  pista.scale.set(largura, 1, comprimento);
+  return pista;
+}
+
+// Reconstrói a malha viária em volta das células ocupadas. Recebe as células
+// porque a espiral cresce a cada novo participante — fixar a extensão deixaria
+// asfalto sobrando no vazio agora e rua faltando na borda nova depois.
+function construirRuas(celulas) {
+  for (const filho of grupoRuas.children) filho.dispose?.();
+  grupoRuas.clear();
+  if (!celulas.length) return;
+
+  const xs = celulas.map(([cx]) => cx);
+  const zs = celulas.map(([, cz]) => cz);
+
+  // As vias ficam nos meios-inteiros da malha, de uma borda à outra: a cidade
+  // acaba cercada por rua, sem quadra aberta na ponta.
+  const xsVia = [];
+  for (let i = Math.min(...xs); i <= Math.max(...xs) + 1; i++) {
+    xsVia.push((i - 0.5) * TAMANHO_CELULA);
+  }
+  const zsVia = [];
+  for (let j = Math.min(...zs); j <= Math.max(...zs) + 1; j++) {
+    zsVia.push((j - 0.5) * TAMANHO_CELULA);
+  }
+
+  const x0 = xsVia[0], x1 = xsVia[xsVia.length - 1];
+  const z0 = zsVia[0], z1 = zsVia[zsVia.length - 1];
+
+  // Cada via atravessa a cidade inteira; os cruzamentos saem de graça na
+  // sobreposição das duas camadas. O meio-quarteirão a mais no comprimento
+  // fecha o cruzamento das pontas.
+  for (const x of xsVia) {
+    grupoRuas.add(criarPista(x, (z0 + z1) / 2, LARGURA_RUA, z1 - z0 + LARGURA_RUA, Y_VIA_Z));
+  }
+  for (const z of zsVia) {
+    grupoRuas.add(criarPista((x0 + x1) / 2, z, x1 - x0 + LARGURA_RUA, LARGURA_RUA, Y_VIA_X));
+  }
+
+  // Faixa central tracejada só nos trechos entre cruzamentos: um traço cortando
+  // o cruzamento leria como uma pista passando por cima da outra.
+  const vao = TAMANHO_CELULA - LARGURA_RUA;
+  const passo = TRACO_COMPRIMENTO + 3;
+  const porTrecho = Math.max(1, Math.floor(vao / passo));
+  const tracos = []; // [x, z, corre ao longo de X?]
+  for (const x of xsVia) {
+    for (let k = 0; k < zsVia.length - 1; k++) {
+      const centro = (zsVia[k] + zsVia[k + 1]) / 2;
+      for (let t = 0; t < porTrecho; t++) {
+        tracos.push([x, centro + (t - (porTrecho - 1) / 2) * passo, false]);
+      }
+    }
+  }
+  for (const z of zsVia) {
+    for (let k = 0; k < xsVia.length - 1; k++) {
+      const centro = (xsVia[k] + xsVia[k + 1]) / 2;
+      for (let t = 0; t < porTrecho; t++) {
+        tracos.push([centro + (t - (porTrecho - 1) / 2) * passo, z, true]);
+      }
+    }
+  }
+
+  // Um traço por mesh custaria centenas de draw calls numa cidade cheia; como
+  // todos são o mesmo retângulo, uma InstancedMesh desenha o conjunto de uma vez.
+  const faixas = new THREE.InstancedMesh(geoPistaUnitaria, materialFaixa, tracos.length);
+  const matriz = new THREE.Matrix4();
+  tracos.forEach(([x, z, aoLongoDeX], i) => {
+    matriz.makeScale(
+      aoLongoDeX ? TRACO_COMPRIMENTO : TRACO_LARGURA,
+      1,
+      aoLongoDeX ? TRACO_LARGURA : TRACO_COMPRIMENTO
+    );
+    matriz.setPosition(x, Y_FAIXA, z);
+    faixas.setMatrixAt(i, matriz);
+  });
+  faixas.instanceMatrix.needsUpdate = true;
+  grupoRuas.add(faixas);
+}
 
 // ---------------------------------------------------------------------------
 // Geração da cidade
@@ -321,6 +430,7 @@ function construirCidade() {
   prediosPorId.clear();
   colisoresPredios.length = 0;
   const celulas = posicoesEspiral(participantes.length);
+  construirRuas(celulas);
   participantes.forEach((p, i) => criarPredio(p, celulas[i]));
   atualizarUI();
 }
@@ -439,7 +549,7 @@ window.addEventListener('pointermove', (ev) => {
     const p = hit.object.userData.participante;
     elTooltip.innerHTML =
       `<div class="t-nome">${escaparHtml(p.apelido)}</div>` +
-      `<div><span class="t-horas">${p.horas}h</span> complementares</div>`;
+      `<div><span class="t-horas">${p.horas}h</span> Blackboard</div>`;
     elTooltip.hidden = false;
     elTooltip.style.left = `${Math.min(ev.clientX + 14, window.innerWidth - 260)}px`;
     elTooltip.style.top = `${ev.clientY + 14}px`;
@@ -604,7 +714,7 @@ function avisarBatida(participante) {
   predioAvisado = participante;
   mostrarAviso(
     `💥 Bateu no prédio de <strong>${escaparHtml(participante.apelido)}</strong>` +
-      ` — <strong>${participante.horas}h</strong> complementares`,
+      ` — <strong>${participante.horas}h</strong> Blackboard`,
     2800,
     'colisao'
   );
@@ -662,7 +772,7 @@ function criarTexturaHoras(horas) {
 
   ctx.font = 'bold 22px system-ui, "Segoe UI", Arial, sans-serif';
   ctx.fillStyle = '#ffd9a8';
-  ctx.fillText('complementares', L / 2, A - 26);
+  ctx.fillText('Blackboard', L / 2, A - 26);
 
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
