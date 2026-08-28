@@ -1060,6 +1060,7 @@ function alternarModoAviao() {
   dicasVoo.hidden = !modoAviao || temToque;
   controlesToque.hidden = !(modoAviao && temToque);
   zerarComandoToque(); // sai do avião sem deixar comando preso da última curva
+  if (!modoAviao) encerrarCorrida(); // pousou: o circuito não continua sozinho
   btnAviao.classList.toggle('ativo', modoAviao);
   btnAviao.textContent = modoAviao ? '🛬 Sair do avião' : '✈️ Pilotar avião';
 
@@ -1094,11 +1095,211 @@ function alternarModoAviao() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Circuito de argolas — corrida contra o relógio
+// ---------------------------------------------------------------------------
+
+// O traçado é fixo em coordenadas do mundo, não das células ocupadas. Se
+// acompanhasse o tamanho da cidade, cada tempo teria sido feito num percurso
+// diferente e o recorde não compararia nada. Todos os pontos caem em cruzamento
+// de rua (múltiplos ímpares de 12) — o único lugar da malha onde é certo não
+// haver prédio nenhum, por maior que a cidade fique.
+// Vai e volta por duas ruas vizinhas do miolo da cidade, sempre no nível do
+// canyon. As ruas escolhidas são as centrais de propósito: a espiral preenche
+// a cidade de dentro para fora, então essas quadras têm prédios dos dois lados
+// desde os primeiros participantes — um circuito largo ficaria sobrevoando
+// chão vazio numa cidade pequena. A curva de 180° entre a ida e a volta é
+// deixada de fora da cidade, onde há espaço livre para manobrar.
+// A direção é dada, não deduzida dos vizinhos: na virada o avião chega pelo
+// lado oposto ao da linha reta entre as duas argolas, e o aro tem de encarar
+// quem vem pela rua.
+// [x, z, altura, direção x, direção z]
+const CIRCUITO = [
+  [-36,  12, 12,  1, 0], // ida pela rua z=12, rumo ao leste
+  [-12,  12, 20,  1, 0],
+  [ 12,  12, 12,  1, 0],
+  [ 36,  12, 20,  1, 0],
+  [ 36, -12, 12, -1, 0], // volta pela rua z=-12, rumo ao oeste
+  [ 12, -12, 20, -1, 0],
+  [-12, -12, 12, -1, 0],
+  [-36, -12, 20, -1, 0],
+];
+
+// A envergadura do avião é de ~5 unidades: um aro de 6 de raio passa com folga
+// sem virar um alvo grande demais.
+const RAIO_ARGOLA = 6;
+const CHAVE_RECORDE = 'horascity:recorde-circuito';
+
+const grupoArgolas = new THREE.Group();
+grupoArgolas.visible = false;
+scene.add(grupoArgolas);
+
+const geoArgola = new THREE.TorusGeometry(RAIO_ARGOLA, 0.45, 10, 40);
+
+const argolas = CIRCUITO.map(([x, z, y, dx, dz]) => {
+  const argola = new THREE.Mesh(
+    geoArgola,
+    new THREE.MeshStandardMaterial({ color: 0x3a4a63, emissive: 0x1b2a3a, roughness: 0.4 })
+  );
+  argola.position.set(x, y, z);
+  // O furo do torus é o eixo Z local: este ângulo o deixa encarando quem chega
+  // pela rua
+  argola.rotation.y = Math.atan2(dx, dz);
+  argola.userData.direcao = { x: dx, z: dz };
+  grupoArgolas.add(argola);
+  return argola;
+});
+
+grupoArgolas.updateMatrixWorld(true); // as argolas não se mexem: basta uma vez
+
+// null fora da corrida. `inicio` só é preenchido ao cruzar a primeira argola:
+// o tempo de aceleração até ela não conta.
+let corrida = null;
+
+const hudCorrida = document.getElementById('hud-corrida');
+const elCorridaTempo = document.getElementById('corrida-tempo');
+const elCorridaProgresso = document.getElementById('corrida-progresso');
+const elCorridaRecorde = document.getElementById('corrida-recorde');
+const btnCorrida = document.getElementById('btn-corrida');
+
+function formatarTempo(ms) {
+  return `${(ms / 1000).toFixed(2)}s`;
+}
+
+function lerRecorde() {
+  const bruto = Number(localStorage.getItem(CHAVE_RECORDE));
+  return Number.isFinite(bruto) && bruto > 0 ? bruto : null;
+}
+
+function pintarArgolas() {
+  argolas.forEach((argola, i) => {
+    const passada = corrida && i < corrida.indice;
+    const proxima = corrida && i === corrida.indice;
+    argola.material.color.setHex(passada ? 0x34c98e : proxima ? 0x5ad0e0 : 0x3a4a63);
+    argola.material.emissive.setHex(passada ? 0x0e3d2a : proxima ? 0x1d6f7c : 0x1b2a3a);
+    argola.material.emissiveIntensity = 1; // a pulsação da anterior não fica presa
+  });
+}
+
+function atualizarHudCorrida() {
+  if (!corrida) return;
+  const decorrido = corrida.inicio === null ? 0 : (corrida.fim ?? performance.now()) - corrida.inicio;
+  elCorridaTempo.textContent = formatarTempo(decorrido);
+  elCorridaProgresso.textContent = `${corrida.indice} / ${argolas.length} argolas`;
+  const recorde = lerRecorde();
+  elCorridaRecorde.hidden = recorde === null;
+  if (recorde !== null) elCorridaRecorde.textContent = `recorde ${formatarTempo(recorde)}`;
+}
+
+function atualizarBotaoCorrida() {
+  btnCorrida.classList.toggle('ativo', corrida !== null);
+  btnCorrida.textContent = !corrida
+    ? '🏁 Circuito'
+    : corrida.fim
+      ? '🔁 Correr de novo'
+      : '✕ Sair do circuito';
+}
+
+function iniciarCorrida() {
+  if (!modoAviao) alternarModoAviao(); // o circuito só existe no ar
+
+  corrida = { indice: 0, inicio: null, fim: null };
+  grupoArgolas.visible = true;
+  pintarArgolas();
+
+  // Nasce alinhado com a primeira argola e um pouco antes dela: como o relógio
+  // só parte no primeiro aro, dá para chegar nele já acelerado.
+  const primeira = argolas[0];
+  const dir = primeira.userData.direcao;
+  aviao.position.set(
+    primeira.position.x - dir.x * 50,
+    primeira.position.y,
+    primeira.position.z - dir.z * 50
+  );
+  estadoAviao.yaw = Math.atan2(-dir.x, -dir.z);
+  estadoAviao.pitch = 0;
+  estadoAviao.roll = 0;
+  encerrarManobraRetorno();
+
+  hudCorrida.hidden = false;
+  atualizarHudCorrida();
+  atualizarBotaoCorrida();
+}
+
+function encerrarCorrida() {
+  if (!corrida) return;
+  corrida = null;
+  grupoArgolas.visible = false;
+  hudCorrida.hidden = true;
+  atualizarBotaoCorrida();
+}
+
+function concluirCorrida() {
+  const ms = corrida.fim - corrida.inicio;
+  const recorde = lerRecorde();
+  const superou = recorde === null || ms < recorde;
+  if (superou) localStorage.setItem(CHAVE_RECORDE, String(Math.round(ms)));
+  mostrarAviso(
+    superou
+      ? `🏁 <strong>${formatarTempo(ms)}</strong> — novo recorde!`
+      : `🏁 <strong>${formatarTempo(ms)}</strong> · seu recorde é ${formatarTempo(recorde)}`,
+    5000
+  );
+  atualizarBotaoCorrida();
+}
+
+const _localAntes = new THREE.Vector3();
+const _localDepois = new THREE.Vector3();
+
+// Recebe as posições de antes e depois do passo do quadro. Testar a distância
+// até o centro da argola não funcionaria: a 60 u/s o avião anda uns 6 por
+// quadro e atravessa o aro sem nunca aparecer "dentro" dele. O que vale é o
+// cruzamento do plano da argola entre um quadro e o outro.
+function atualizarCorrida(posAntes, posDepois) {
+  if (!corrida || corrida.fim) return;
+
+  const argola = argolas[corrida.indice];
+  argola.worldToLocal(_localAntes.copy(posAntes));
+  argola.worldToLocal(_localDepois.copy(posDepois));
+
+  // Sinais iguais: ficou do mesmo lado do plano, não cruzou nada
+  if ((_localAntes.z > 0) === (_localDepois.z > 0)) return;
+
+  // Ponto exato onde a trajetória furou o plano — é ele que decide se passou
+  // pelo buraco ou raspou por fora do aro
+  const t = _localAntes.z / (_localAntes.z - _localDepois.z);
+  const x = _localAntes.x + (_localDepois.x - _localAntes.x) * t;
+  const y = _localAntes.y + (_localDepois.y - _localAntes.y) * t;
+  if (Math.hypot(x, y) > RAIO_ARGOLA) return;
+
+  if (corrida.indice === 0) corrida.inicio = performance.now();
+  corrida.indice++;
+  pintarArgolas();
+
+  if (corrida.indice >= argolas.length) {
+    corrida.fim = performance.now();
+    concluirCorrida();
+  }
+}
+
+btnCorrida.addEventListener('click', () => {
+  btnCorrida.blur();
+  // Depois da chegada o mesmo botão recomeça: sair e entrar de novo só para
+  // repetir a volta seria um passo a mais sem motivo
+  if (corrida && !corrida.fim) encerrarCorrida();
+  else iniciarCorrida();
+});
+
 const _dirAviao = new THREE.Vector3();
+const _posAnteriorAviao = new THREE.Vector3();
 const _posCamera = new THREE.Vector3();
 const _alvoOlhar = new THREE.Vector3();
 
 function atualizarAviao(dt) {
+  // Guardada antes do passo: a passagem pelas argolas é testada no segmento
+  // percorrido no quadro, não na posição isolada
+  _posAnteriorAviao.copy(aviao.position);
+
   // Teclado e joystick somam. O joystick é analógico, então subir e virar
   // podem valer frações: meia inclinação faz meia curva.
   const subir = THREE.MathUtils.clamp(
@@ -1144,6 +1345,8 @@ function atualizarAviao(dt) {
   if (batida && avisarBatida(batida.predio.participante)) {
     explodir(batida.ponto, batida.predio.participante);
   }
+
+  atualizarCorrida(_posAnteriorAviao, aviao.position);
 
   // Encostou na borda do mapa: dispara a volta e segue voando
   const raio = Math.hypot(aviao.position.x, aviao.position.z);
@@ -1194,6 +1397,17 @@ function animar() {
 
   if (modoAviao) {
     atualizarAviao(dt);
+
+    if (corrida) {
+      atualizarHudCorrida();
+      if (!corrida.fim) {
+        // Pulsa só o brilho da próxima argola. Pulsar a escala mudaria o raio
+        // do aro em coordenadas locais e, junto com ele, o que conta como
+        // passagem — o alvo do jogo não pode respirar.
+        argolas[corrida.indice].material.emissiveIntensity =
+          1.4 + Math.sin(relogio.elapsedTime * 5) * 0.6;
+      }
+    }
   } else {
     if (voo) {
       voo.t = Math.min(1, voo.t + 0.02);

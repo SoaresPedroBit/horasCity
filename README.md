@@ -73,6 +73,24 @@ Depois abra `http://localhost:3000` (ou `:8000`).
 - ✅ Fluxo "Participar da cidade" com consentimento — **em modo demo**: as
   horas são geradas de forma fictícia
 - ✅ Modelo de privacidade sem RA no lado público (ver abaixo)
+- ✅ Circuito de argolas contra o relógio (botão "🏁 Circuito"): oito argolas
+  em cruzamentos de rua — o único ponto da malha onde é certo não haver
+  prédio. O percurso vai e volta por duas ruas vizinhas do miolo da cidade:
+  como a espiral preenche do centro para fora, essas quadras têm prédios dos
+  dois lados desde os primeiros participantes, enquanto um traçado largo
+  ficaria sobrevoando chão vazio numa cidade pequena. As alturas alternam
+  entre 12 e 20 — sempre no nível do canyon, que é onde está a dificuldade —
+  e a curva de 180° entre a ida e a volta cai fora da cidade, onde há espaço
+  livre para manobrar. O traçado é fixo em coordenadas do mundo e não
+  acompanha o tamanho da cidade: se acompanhasse, cada tempo teria sido feito
+  num percurso diferente e o recorde não compararia nada.
+  A passagem é detectada pelo **cruzamento do plano** da argola entre um
+  quadro e o outro — testar a distância até o centro perderia o aro, já que
+  a 60 u/s o avião anda ~6 unidades por quadro e o atravessa sem nunca
+  aparecer "dentro" dele. O cronômetro usa `performance.now()` e não a soma
+  dos `dt`, que é clampada em 0,1 s e daria tempo de brinde a quem trava.
+  O recorde fica no `localStorage`
+- ⬜ Leaderboard online do circuito (Supabase)
 - ⬜ Integração com a API real da faculdade
 - ⬜ Persistência real dos participantes
 - ⬜ Botão "sair da cidade" (remoção do registro)

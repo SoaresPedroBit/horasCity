@@ -80,8 +80,9 @@ html, body {
   background: rgba(255, 255, 255, 0.16);
 }
 
-#btn-aviao {
-  margin-left: auto;
+#btn-aviao,
+#btn-corrida {
+  margin-left: 0;
   padding: 10px 16px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -92,8 +93,14 @@ html, body {
   cursor: pointer;
 }
 
+#btn-aviao {
+  margin-left: auto;
+}
+
 #btn-aviao:hover,
-#btn-aviao.ativo {
+#btn-aviao.ativo,
+#btn-corrida:hover,
+#btn-corrida.ativo {
   background: rgba(90, 208, 224, 0.25);
   border-color: #5ad0e0;
 }
@@ -466,3 +473,48 @@ html, body {
   background: rgba(247, 178, 59, 0.34);
 }
 
+
+/* ---------- HUD do circuito de argolas ---------- */
+
+#hud-corrida {
+  position: fixed;
+  top: 78px;
+  right: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 150px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-panel);
+  font-size: 13px;
+  color: var(--text-dim);
+  z-index: 6;
+  backdrop-filter: blur(8px);
+}
+
+#hud-corrida[hidden] {
+  display: none;
+}
+
+#hud-corrida strong {
+  color: var(--text);
+}
+
+/* O cronômetro é o que se lê de relance no meio da curva: tabular-nums evita
+   que o número dance de largura a cada centésimo */
+#corrida-tempo {
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #5ad0e0;
+}
+
+#corrida-recorde {
+  color: var(--accent);
+}
+
+#corrida-recorde[hidden] {
+  display: none;
+}
