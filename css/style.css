@@ -466,17 +466,10 @@ html, body {
   background: rgba(247, 178, 59, 0.34);
 }
 
-/* As dicas de voo falam de teclas que não existem num aparelho de toque */
-.so-toque {
-  display: none;
-}
-
+/* No toque as dicas falam de teclas que não existem e o joystick dispensa
+   legenda — o painel só tomaria tela */
 @media (pointer: coarse) {
-  .so-teclado {
+  #dicas-voo {
     display: none;
-  }
-
-  .so-toque {
-    display: inline;
   }
 }
