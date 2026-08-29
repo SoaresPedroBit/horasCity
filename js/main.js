@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { MapControls } from 'three/addons/controls/MapControls.js';
 import { criarAviao } from './aviao.js';
+import { ApiService, ModalParticipar } from './formulario.js';
 
 // ---------------------------------------------------------------------------
 // Configuração
@@ -275,8 +276,6 @@ function posicoesEspiral(qtd) {
 }
 
 // Hash do id PÚBLICO, só para variar a aparência do prédio.
-// Nunca aplique isto a um RA: o espaço de RAs é pequeno o bastante para ser
-// enumerado em segundos, então um hash de RA publicado equivale a publicar o RA.
 function hashId(id) {
   let h = 0;
   for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -287,8 +286,7 @@ function hashId(id) {
 }
 
 // Painel do outdoor desenhado em canvas: fundo escuro, moldura na cor do
-// prédio e o apelido em letras claras. A fonte encolhe até o texto caber, então
-// apelidos longos aparecem menores em vez de vazarem para fora do painel.
+// prédio e o apelido em letras claras.
 function criarTexturaApelido(apelido, cor) {
   const L = 512;
   const A = 128;
@@ -330,10 +328,7 @@ function criarTexturaApelido(apelido, cor) {
   return tex;
 }
 
-// Outdoor plantado no telhado. A base do grupo fica na altura do telhado, e o
-// grupo inteiro gira em torno de Y para encarar a câmera (ver animar()), então
-// o apelido é legível de qualquer ângulo — os dois postes são simétricos e
-// acompanham o giro sem denunciá-lo.
+// Outdoor plantado no telhado.
 function criarOutdoor(participante, larguraPredio, cor) {
   const larguraPainel = Math.max(7.5, larguraPredio + 1.5);
   const grupo = new THREE.Group();
@@ -341,15 +336,11 @@ function criarOutdoor(participante, larguraPredio, cor) {
   const textura = criarTexturaApelido(participante.apelido, cor);
   const frente = new THREE.MeshBasicMaterial({ map: textura });
   const moldura = new THREE.MeshLambertMaterial({ color: 0x2b3448 });
-  // Caixa fina em vez de plano: as faces +Z e -Z já vêm com as UVs corretas,
-  // então o texto aparece na leitura certa dos dois lados (um plano de dupla
-  // face mostraria o verso espelhado).
   const painel = new THREE.Mesh(
     new THREE.BoxGeometry(larguraPainel, OUTDOOR_ALTURA_PAINEL, 0.25),
     [moldura, moldura, moldura, moldura, frente, frente]
   );
   painel.position.y = OUTDOOR_ALTURA_POSTE + OUTDOOR_ALTURA_PAINEL / 2;
-  // O hover no letreiro mostra o mesmo tooltip do prédio
   painel.userData.participante = participante;
 
   const geoPoste = new THREE.CylinderGeometry(0.16, 0.16, OUTDOOR_ALTURA_POSTE, 6);
@@ -361,15 +352,13 @@ function criarOutdoor(participante, larguraPredio, cor) {
   }
 
   grupo.add(painel);
-  grupo.userData.textura = textura; // guardado para liberar na reconstrução
+  grupo.userData.textura = textura;
   return grupo;
 }
 
 function criarPredio(participante, celula) {
   const altura = ALTURA_MINIMA + participante.horas * ALTURA_POR_HORA;
   const h = hashId(participante.id);
-  // Deslocamento sem sinal (>>>): com >> o bit alto do hash torna o resultado
-  // negativo, e o índice negativo devolvia undefined — o prédio saía branco.
   const largura = 6 + (h % 4);          // 6–9
   const profundidade = 6 + ((h >>> 4) % 4);
   const cor = PALETA_PREDIOS[(h >>> 8) % PALETA_PREDIOS.length];
@@ -388,9 +377,6 @@ function criarPredio(participante, celula) {
   mesh.position.set(cx * TAMANHO_CELULA, altura / 2, cz * TAMANHO_CELULA);
   mesh.userData.participante = participante;
 
-  // Calçada do lote. Acompanha o prédio, não a célula: presa ao tamanho da
-  // célula, o aumento do espaçamento faria os lotes se encostarem e as ruas
-  // sumirem visualmente.
   const lote = new THREE.Mesh(
     new THREE.BoxGeometry(largura + 6, 0.2, profundidade + 6),
     new THREE.MeshLambertMaterial({ color: 0x222a3a })
@@ -404,26 +390,20 @@ function criarPredio(participante, celula) {
   grupoPredios.add(lote, mesh, outdoor);
   prediosPorId.set(participante.id, mesh);
 
-  // Caixa usada na colisão do avião. Os prédios não têm rotação, então basta
-  // guardar centro, meias-medidas e altura — o teste vira esfera-vs-AABB.
   colisoresPredios.push({
     x: mesh.position.x,
     z: mesh.position.z,
     hx: largura / 2,
     hz: profundidade / 2,
     altura,
-    // O outdoor gira, então a caixa de colisão sobe até o topo dele cobrindo
-    // o telhado inteiro: seja qual for a orientação do painel, o avião bate.
     alturaColisao: altura + OUTDOOR_ALTURA_TOTAL,
-    participante, // para mostrar de quem é o prédio na hora da batida
+    participante,
   });
 
   return mesh;
 }
 
 function construirCidade() {
-  // Cada outdoor tem sua própria textura de canvas; sem liberar aqui, cada
-  // reconstrução da cidade deixaria uma textura órfã na GPU por prédio.
   for (const o of outdoors) o.userData.textura.dispose();
   outdoors.length = 0;
   grupoPredios.clear();
@@ -449,14 +429,12 @@ function atualizarUI() {
   const jaParticipa = Boolean(meuId && prediosPorId.has(meuId));
   document.getElementById('btn-meu-predio').hidden = !jaParticipa;
 
-  // Cidade cheia: só quem já tem prédio continua podendo atualizar as horas
-  const lotada = participantes.length >= MAX_PREDIOS && !jaParticipa;
+  const lotada = participantes.length >= MAX_PREDIOS;
   const btnParticipar = document.getElementById('btn-participar');
   btnParticipar.disabled = lotada;
   btnParticipar.textContent = lotada ? '🏗️ Cidade lotada' : '＋ Participar da cidade';
 }
 
-// O apelido é texto enviado por outra pessoa — nunca injetar como HTML cru
 function escaparHtml(txt) {
   const div = document.createElement('div');
   div.textContent = txt;
@@ -467,26 +445,27 @@ function lerMeuId() {
   try {
     return localStorage.getItem(CHAVE_MEU_ID);
   } catch {
-    return null; // navegação privada / cookies bloqueados
+    return null;
   }
 }
 
-function gravarMeuId(id) {
-  try {
-    localStorage.setItem(CHAVE_MEU_ID, id);
-  } catch {
-    /* sem persistência é aceitável: o usuário só perde o marcador "você" */
-  }
-}
+// ---------------------------------------------------------------------------
+// Instanciação do Modal de Inscrição
+// ---------------------------------------------------------------------------
+
+new ModalParticipar({
+  getEstaLotado: () => participantes.length >= MAX_PREDIOS,
+  onSubmit: async ({ ra, apelido }) => {
+    await ApiService.enviarInscricao(ra, apelido);
+  },
+});
 
 // ---------------------------------------------------------------------------
 // Voo de câmera até um prédio
 // ---------------------------------------------------------------------------
 
-let voo = null; // { alvoCamera, alvoControles, t }
+let voo = null;
 
-// Vista de abertura: a cidade inteira, em diagonal. O afastamento acompanha o
-// tamanho da espiral, para continuar cabendo tudo conforme a cidade cresce.
 function vistaGeralCidade() {
   const anel = Math.max(2, Math.ceil(Math.sqrt(Math.max(participantes.length, 1)) / 2));
   const dist = Math.max(60, anel * TAMANHO_CELULA + 40);
@@ -508,7 +487,7 @@ function irParaVistaGeral() {
 }
 
 function voarAte(id) {
-  if (modoAviao) alternarModoAviao(); // sai do avião antes do voo de câmera
+  if (modoAviao) alternarModoAviao();
   const predio = prediosPorId.get(id);
   if (!predio) return;
   const p = predio.position;
@@ -521,6 +500,12 @@ function voarAte(id) {
   };
 }
 
+// Atalho para quem já participa
+document.getElementById('btn-meu-predio').addEventListener('click', () => {
+  const meuId = lerMeuId();
+  if (meuId && prediosPorId.has(meuId)) voarAte(meuId);
+});
+
 // ---------------------------------------------------------------------------
 // Tooltip (hover nos prédios)
 // ---------------------------------------------------------------------------
@@ -530,8 +515,6 @@ const ponteiro = new THREE.Vector2();
 const elTooltip = document.getElementById('tooltip');
 
 window.addEventListener('pointermove', (ev) => {
-  // No modo avião o tooltip só atualiza quando o mouse mexe, então ficaria
-  // parado na tela apontando para um prédio que já ficou para trás.
   if (modoAviao) {
     elTooltip.hidden = true;
     return;
@@ -559,96 +542,6 @@ window.addEventListener('pointermove', (ev) => {
 });
 
 // ---------------------------------------------------------------------------
-// Fluxo "Participar" (demo — na versão final chama a API da faculdade)
-// ---------------------------------------------------------------------------
-
-const overlay = document.getElementById('modal-overlay');
-const elFormErro = document.getElementById('form-erro');
-
-function mostrarErro(msg) {
-  elFormErro.textContent = msg;
-  elFormErro.hidden = false;
-}
-
-function limparErro() {
-  elFormErro.hidden = true;
-}
-
-document.getElementById('btn-participar').addEventListener('click', () => {
-  limparErro();
-  overlay.hidden = false;
-});
-document.getElementById('btn-cancelar').addEventListener('click', () => (overlay.hidden = true));
-
-// Faz o papel do endpoint POST /participar do servidor.
-//
-// Contrato: recebe o RA, devolve APENAS { id, horas }. O RA fica do lado de lá
-// e nunca volta para o navegador nem entra no arquivo público. O id é
-// aleatório, não derivado do RA — é isso que impede alguém de partir do
-// participantes.json e chegar de volta no RA.
-function apiFalsaParticipar(ra) {
-  const semente = (hashId(ra) * 1103515245 + 12345) >>> 0;
-  const horas = semente % 130;
-  const id = crypto.randomUUID().replaceAll('-', '').slice(0, 16);
-  return new Promise((resolve) => setTimeout(() => resolve({ id, horas }), 400));
-}
-
-document.getElementById('form-participar').addEventListener('submit', async (ev) => {
-  ev.preventDefault();
-  const campoRa = document.getElementById('input-ra');
-  const apelido = document.getElementById('input-apelido').value.trim();
-  const existente = participantes.find((p) => p.id === lerMeuId());
-
-  limparErro();
-
-  // Um apelido com cara de RA anularia todo o resto do desenho
-  if (/\d{4,}/.test(apelido)) {
-    mostrarErro('Escolha um apelido sem sequências de números — ele fica visível para todos.');
-    return;
-  }
-
-  if (!existente && participantes.length >= MAX_PREDIOS) {
-    mostrarErro(
-      `A cidade chegou ao limite de ${MAX_PREDIOS} prédios. ` +
-        'Não é possível entrar até que alguém saia.'
-    );
-    return;
-  }
-
-  const btn = document.getElementById('btn-confirmar');
-  btn.disabled = true;
-  btn.textContent = 'Consultando horas...';
-
-  const { id, horas } = await apiFalsaParticipar(campoRa.value.trim());
-
-  // A partir daqui o RA não é mais necessário: some do formulário e da memória
-  campoRa.value = '';
-  ev.target.reset();
-
-  if (existente) {
-    // Já participava neste navegador: atualiza em vez de criar outro prédio.
-    // No servidor a deduplicação é feita pelo RA.
-    existente.apelido = apelido;
-    existente.horas = horas;
-  } else {
-    participantes.push({ id, apelido, horas });
-    gravarMeuId(id);
-  }
-  construirCidade();
-
-  btn.disabled = false;
-  btn.textContent = 'Entrar na cidade';
-  overlay.hidden = true;
-  voarAte(lerMeuId());
-});
-
-// Atalho para quem já participa: encontra o próprio prédio sem digitar o RA
-document.getElementById('btn-meu-predio').addEventListener('click', () => {
-  const meuId = lerMeuId();
-  if (meuId && prediosPorId.has(meuId)) voarAte(meuId);
-});
-
-// ---------------------------------------------------------------------------
 // Modo avião — pilote sobre a cidade (WASD + Shift, Esc para sair)
 // ---------------------------------------------------------------------------
 
@@ -660,18 +553,13 @@ let modoAviao = false;
 const estadoAviao = { yaw: 0, pitch: 0, roll: 0 };
 const teclas = new Set();
 
-// Manobra automática ao encostar na barreira: o avião faz a volta e segue voando
-let manobraRetorno = null; // { yawAlvo, sentido }
+let manobraRetorno = null;
 const elAvisoBarreira = document.getElementById('aviso-barreira');
 
-// Normaliza um ângulo para o intervalo (-π, π]
 function normalizarAngulo(a) {
   return Math.atan2(Math.sin(a), Math.cos(a));
 }
 
-// Yaw que faz o avião apontar de volta para o centro da cidade.
-// Batendo de frente na barreira isso equivale exatamente a um giro de 180°;
-// numa raspada de lado, evita ficar preso raspando na parede.
 function yawParaOCentro() {
   return Math.atan2(aviao.position.x, aviao.position.z);
 }
@@ -680,14 +568,10 @@ function iniciarManobra(yawAlvo) {
   const delta = normalizarAngulo(yawAlvo - estadoAviao.yaw);
   manobraRetorno = {
     yawAlvo,
-    // num 180° exato o delta fica em ±π e o sinal é indiferente; fora disso,
-    // gira pelo lado mais curto
     sentido: delta >= 0 ? 1 : -1,
   };
 }
 
-// Faixa de aviso do modo avião. Tem tempo próprio: continua na tela depois de
-// a explosão já ter apagado, para dar tempo de ler de quem era o prédio.
 let timerAviso = null;
 
 function mostrarAviso(html, duracaoMs, tipo) {
@@ -703,12 +587,9 @@ function esconderAviso() {
   elAvisoBarreira.hidden = true;
 }
 
-// Evita reescrever o aviso a cada quadro enquanto o avião raspa no mesmo prédio
 let predioAvisado = null;
 let timerPredioAvisado = null;
 
-// Devolve true só na primeira vez de cada batida — é o que impede o avião
-// raspando na mesma parede de reescrever o aviso e explodir a cada quadro.
 function avisarBatida(participante) {
   if (participante === predioAvisado) return false;
   predioAvisado = participante;
@@ -724,15 +605,12 @@ function avisarBatida(participante) {
 }
 
 // ---------------------------------------------------------------------------
-// Explosão da batida — fogo leve no ponto do impacto e as horas subindo
+// Explosão da batida
 // ---------------------------------------------------------------------------
 
-const DURACAO_EXPLOSAO = 0.9; // segundos — o fogo
-// As horas têm tempo próprio, mais longo: o fogo é um susto, o número é
-// informação e precisa sobrar tempo para lê-lo depois de o clarão apagar.
+const DURACAO_EXPLOSAO = 0.9;
 const DURACAO_HORAS = 1.4;
 
-// Ponto redondo com degradê: sem isto as faíscas saem como quadradinhos
 const texturaFaisca = (() => {
   const c = document.createElement('canvas');
   c.width = 32;
@@ -749,8 +627,6 @@ const texturaFaisca = (() => {
   return tex;
 })();
 
-// Número que sobe do impacto. É a mesma informação da faixa, mas no lugar para
-// onde o piloto está olhando — a faixa fica no topo da tela.
 function criarTexturaHoras(horas) {
   const L = 256;
   const A = 128;
@@ -785,8 +661,6 @@ function explodir(ponto, participante) {
   const grupo = new THREE.Group();
   grupo.position.set(ponto.x, ponto.y, ponto.z);
 
-  // Clarão: uma bola que cresce e apaga. Aditivo e sem depthWrite, para
-  // acender a fachada em vez de recortar um buraco nela.
   const flash = new THREE.Mesh(
     new THREE.SphereGeometry(1, 12, 8),
     new THREE.MeshBasicMaterial({
@@ -798,8 +672,6 @@ function explodir(ponto, participante) {
   );
   grupo.add(flash);
 
-  // Faíscas: guardamos só a velocidade de cada uma, e a posição sai de v*t
-  // (com uma gravidade leve), então nada acumula erro entre quadros.
   const QTD_FAISCAS = 22;
   const velocidades = [];
   for (let i = 0; i < QTD_FAISCAS; i++) {
@@ -827,8 +699,6 @@ function explodir(ponto, participante) {
   );
   grupo.add(faiscas);
 
-  // Sprite já encara a câmera sozinho; depthTest desligado para as horas não
-  // ficarem escondidas dentro do prédio em que o avião acabou de bater.
   const texturaHoras = criarTexturaHoras(participante.horas);
   const etiqueta = new THREE.Sprite(
     new THREE.SpriteMaterial({
@@ -838,8 +708,6 @@ function explodir(ponto, participante) {
       depthTest: false,
     })
   );
-  // A câmera de perseguição fica a ~10 unidades do avião: em escala maior o
-  // letreiro das horas tapa a tela inteira na hora da batida.
   etiqueta.scale.set(5, 2.5, 1);
   etiqueta.position.y = 2;
   grupo.add(etiqueta);
@@ -855,14 +723,13 @@ function descartarExplosao(e) {
   e.faiscas.geometry.dispose();
   e.faiscas.material.dispose();
   e.etiqueta.material.dispose();
-  e.texturaHoras.dispose(); // uma textura por batida: sem isto, vazam na GPU
+  e.texturaHoras.dispose();
 }
 
 function atualizarExplosoes(dt) {
   for (let i = explosoes.length - 1; i >= 0; i--) {
     const e = explosoes[i];
     e.t += dt;
-    // a explosão só é descartada quando o mais lento dos dois tempos acaba
     if (e.t >= DURACAO_HORAS) {
       descartarExplosao(e);
       explosoes.splice(i, 1);
@@ -883,7 +750,6 @@ function atualizarExplosoes(dt) {
     pos.needsUpdate = true;
     e.faiscas.material.opacity = 1 - k;
 
-    // as horas sobem e só começam a sumir no fim, para dar tempo de ler
     e.etiqueta.position.y = 2 + kh * 3.5;
     e.etiqueta.material.opacity = kh < 0.75 ? 1 : (1 - kh) / 0.25;
   }
@@ -893,23 +759,16 @@ function encerrarManobraRetorno() {
   manobraRetorno = null;
 }
 
-// Raio de colisão do avião, tirado do próprio modelo — se o modelo mudar de
-// tamanho em aviao.js, a colisão acompanha sem precisar de ajuste manual.
 const RAIO_AVIAO = (() => {
   const tam = new THREE.Box3().setFromObject(aviao).getSize(new THREE.Vector3());
   return Math.max(tam.x, tam.z) / 2;
 })();
 
-// Empurra o avião para fora de qualquer prédio em que tenha entrado.
-// Os prédios são caixas alinhadas aos eixos (sem rotação), então o ponto mais
-// próximo da caixa sai de um clamp e o teste é exato, não aproximado.
-// Devolve { ponto, predio } do contato, ou null se não houve colisão.
 function resolverColisaoPredios() {
   const p = aviao.position;
   let batida = null;
 
   for (const c of colisoresPredios) {
-    // descarte rápido: caixa expandida pelo raio do avião
     if (Math.abs(p.x - c.x) > c.hx + RAIO_AVIAO) continue;
     if (Math.abs(p.z - c.z) > c.hz + RAIO_AVIAO) continue;
     if (p.y - RAIO_AVIAO > c.alturaColisao) continue;
@@ -932,7 +791,6 @@ function resolverColisaoPredios() {
       nz = dz / dist;
       empurrao = RAIO_AVIAO - dist;
     } else {
-      // centro do avião dentro do prédio: sai pela face mais próxima
       const paraX = c.hx - Math.abs(p.x - c.x);
       const paraZ = c.hz - Math.abs(p.z - c.z);
       const paraCima = c.alturaColisao - p.y;
@@ -948,7 +806,6 @@ function resolverColisaoPredios() {
     p.x += nx * empurrao;
     p.y += ny * empurrao;
     p.z += nz * empurrao;
-    // o ponto de contato é onde a explosão nasce
     batida = { ponto: { x: px, y: py, z: pz }, predio: c };
   }
 
@@ -958,29 +815,21 @@ function resolverColisaoPredios() {
 window.addEventListener('keydown', (ev) => {
   if (ev.target.tagName === 'INPUT') return;
   teclas.add(ev.code);
-  // ev.repeat: segurar Esc dispararia o toggle a cada repetição do teclado,
-  // fazendo o modo avião piscar entre ligado e desligado
   if (ev.code === 'Escape' && modoAviao && !ev.repeat) alternarModoAviao();
 });
 window.addEventListener('keyup', (ev) => teclas.delete(ev.code));
 
 // ---------------------------------------------------------------------------
-// Joystick de toque — pilotar no celular, onde não existe WASD
+// Joystick de toque
 // ---------------------------------------------------------------------------
 
 const controlesToque = document.getElementById('controles-toque');
 const joystick = document.getElementById('joystick');
 const manete = document.getElementById('joystick-manete');
 const btnTurbo = document.getElementById('btn-turbo');
-
-// Só aparece em tela de toque: com mouse e teclado o joystick apenas tomaria
-// espaço da cidade, já que o WASD comanda melhor.
 const temToque = window.matchMedia('(pointer: coarse)').matches;
 
-// Eixos da manete, de -1 a 1. São somados ao teclado no controle de voo, então
-// quem tem os dois pode usar qualquer um deles.
 const comandoToque = { x: 0, y: 0, turbo: false };
-
 let ponteiroJoystick = null;
 
 function moverManete(ev) {
@@ -989,8 +838,6 @@ function moverManete(ev) {
   let dx = (ev.clientX - (area.left + raio)) / raio;
   let dy = (ev.clientY - (area.top + raio)) / raio;
 
-  // Dedo além da borda ainda comanda, mas preso no limite do círculo — sem
-  // isto, arrastar para longe daria uma curva mais fechada que o máximo.
   const dist = Math.hypot(dx, dy);
   if (dist > 1) {
     dx /= dist;
@@ -998,7 +845,7 @@ function moverManete(ev) {
   }
 
   comandoToque.x = dx;
-  comandoToque.y = -dy; // a tela cresce para baixo; no voo, para cima é subir
+  comandoToque.y = -dy;
   manete.style.transform = `translate(${dx * raio * 0.6}px, ${dy * raio * 0.6}px)`;
 }
 
@@ -1013,7 +860,6 @@ function zerarComandoToque() {
 
 joystick.addEventListener('pointerdown', (ev) => {
   ponteiroJoystick = ev.pointerId;
-  // captura: o dedo pode sair do círculo no meio da curva sem perder o comando
   joystick.setPointerCapture(ev.pointerId);
   moverManete(ev);
 });
@@ -1022,8 +868,6 @@ joystick.addEventListener('pointermove', (ev) => {
   if (ev.pointerId === ponteiroJoystick) moverManete(ev);
 });
 
-// pointercancel junto do pointerup: sem ele, uma interrupção do sistema (uma
-// chamada, um gesto do Android) deixaria o avião girando sozinho para sempre.
 for (const evento of ['pointerup', 'pointercancel']) {
   joystick.addEventListener(evento, (ev) => {
     if (ev.pointerId === ponteiroJoystick) zerarComandoToque();
@@ -1054,13 +898,10 @@ function alternarModoAviao() {
   modoAviao = !modoAviao;
   aviao.visible = modoAviao;
   controls.enabled = !modoAviao;
-  // No toque quem manda é o joystick: o painel só falaria de teclas que não
-  // existem ali e tomaria tela. Mesma condição que mostra os controles, para
-  // as duas decisões não divergirem.
   dicasVoo.hidden = !modoAviao || temToque;
   controlesToque.hidden = !(modoAviao && temToque);
-  zerarComandoToque(); // sai do avião sem deixar comando preso da última curva
-  if (!modoAviao) encerrarCorrida(); // pousou: o circuito não continua sozinho
+  zerarComandoToque();
+  if (!modoAviao) encerrarCorrida();
   btnAviao.classList.toggle('ativo', modoAviao);
   btnAviao.textContent = modoAviao ? '🛬 Sair do avião' : '✈️ Pilotar avião';
 
@@ -1070,12 +911,7 @@ function alternarModoAviao() {
   elTooltip.hidden = true;
 
   if (modoAviao) {
-    voo = null; // cancela qualquer voo de câmera em andamento
-    // nasce dentro do mapa, mesmo que a câmera estivesse olhando para a borda
-    // Nasce fora da cidade, apontando para ela. A distância acompanha o
-    // tamanho da cidade: fixa, o avião passaria a nascer dentro dela conforme
-    // a espiral cresce. Altura de cruzeiro logo acima dos prédios mais altos,
-    // para a cidade ficar enquadrada em vez de sumir abaixo do horizonte.
+    voo = null;
     const afastamento = vistaGeralCidade().camera.length() * 0.7;
     const alvo = new THREE.Vector3(controls.target.x, 38, controls.target.z + afastamento);
     const raio = Math.hypot(alvo.x, alvo.z);
@@ -1085,48 +921,29 @@ function alternarModoAviao() {
       alvo.z *= fator;
     }
     aviao.position.copy(alvo);
-    estadoAviao.yaw = yawParaOCentro(); // já entra apontando para a cidade
+    estadoAviao.yaw = yawParaOCentro();
     estadoAviao.pitch = 0;
     estadoAviao.roll = 0;
   } else {
-    // Sem isto a câmera fica largada onde o avião parou, apontando para o
-    // vazio; volta enquadrando a cidade inteira.
     irParaVistaGeral();
   }
 }
 
 // ---------------------------------------------------------------------------
-// Circuito de argolas — corrida contra o relógio
+// Circuito de argolas
 // ---------------------------------------------------------------------------
 
-// O traçado é fixo em coordenadas do mundo, não das células ocupadas. Se
-// acompanhasse o tamanho da cidade, cada tempo teria sido feito num percurso
-// diferente e o recorde não compararia nada. Todos os pontos caem em cruzamento
-// de rua (múltiplos ímpares de 12) — o único lugar da malha onde é certo não
-// haver prédio nenhum, por maior que a cidade fique.
-// Vai e volta por duas ruas vizinhas do miolo da cidade, sempre no nível do
-// canyon. As ruas escolhidas são as centrais de propósito: a espiral preenche
-// a cidade de dentro para fora, então essas quadras têm prédios dos dois lados
-// desde os primeiros participantes — um circuito largo ficaria sobrevoando
-// chão vazio numa cidade pequena. A curva de 180° entre a ida e a volta é
-// deixada de fora da cidade, onde há espaço livre para manobrar.
-// A direção é dada, não deduzida dos vizinhos: na virada o avião chega pelo
-// lado oposto ao da linha reta entre as duas argolas, e o aro tem de encarar
-// quem vem pela rua.
-// [x, z, altura, direção x, direção z]
 const CIRCUITO = [
-  [-36,  12, 12,  1, 0], // ida pela rua z=12, rumo ao leste
+  [-36,  12, 12,  1, 0],
   [-12,  12, 20,  1, 0],
   [ 12,  12, 12,  1, 0],
   [ 36,  12, 20,  1, 0],
-  [ 36, -12, 12, -1, 0], // volta pela rua z=-12, rumo ao oeste
+  [ 36, -12, 12, -1, 0],
   [ 12, -12, 20, -1, 0],
   [-12, -12, 12, -1, 0],
   [-36, -12, 20, -1, 0],
 ];
 
-// A envergadura do avião é de ~5 unidades: um aro de 6 de raio passa com folga
-// sem virar um alvo grande demais.
 const RAIO_ARGOLA = 6;
 const CHAVE_RECORDE = 'horascity:recorde-circuito';
 
@@ -1142,18 +959,14 @@ const argolas = CIRCUITO.map(([x, z, y, dx, dz]) => {
     new THREE.MeshStandardMaterial({ color: 0x3a4a63, emissive: 0x1b2a3a, roughness: 0.4 })
   );
   argola.position.set(x, y, z);
-  // O furo do torus é o eixo Z local: este ângulo o deixa encarando quem chega
-  // pela rua
   argola.rotation.y = Math.atan2(dx, dz);
   argola.userData.direcao = { x: dx, z: dz };
   grupoArgolas.add(argola);
   return argola;
 });
 
-grupoArgolas.updateMatrixWorld(true); // as argolas não se mexem: basta uma vez
+grupoArgolas.updateMatrixWorld(true);
 
-// null fora da corrida. `inicio` só é preenchido ao cruzar a primeira argola:
-// o tempo de aceleração até ela não conta.
 let corrida = null;
 
 const hudCorrida = document.getElementById('hud-corrida');
@@ -1177,7 +990,7 @@ function pintarArgolas() {
     const proxima = corrida && i === corrida.indice;
     argola.material.color.setHex(passada ? 0x34c98e : proxima ? 0x5ad0e0 : 0x3a4a63);
     argola.material.emissive.setHex(passada ? 0x0e3d2a : proxima ? 0x1d6f7c : 0x1b2a3a);
-    argola.material.emissiveIntensity = 1; // a pulsação da anterior não fica presa
+    argola.material.emissiveIntensity = 1;
   });
 }
 
@@ -1201,14 +1014,12 @@ function atualizarBotaoCorrida() {
 }
 
 function iniciarCorrida() {
-  if (!modoAviao) alternarModoAviao(); // o circuito só existe no ar
+  if (!modoAviao) alternarModoAviao();
 
   corrida = { indice: 0, inicio: null, fim: null };
   grupoArgolas.visible = true;
   pintarArgolas();
 
-  // Nasce alinhado com a primeira argola e um pouco antes dela: como o relógio
-  // só parte no primeiro aro, dá para chegar nele já acelerado.
   const primeira = argolas[0];
   const dir = primeira.userData.direcao;
   aviao.position.set(
@@ -1251,10 +1062,6 @@ function concluirCorrida() {
 const _localAntes = new THREE.Vector3();
 const _localDepois = new THREE.Vector3();
 
-// Recebe as posições de antes e depois do passo do quadro. Testar a distância
-// até o centro da argola não funcionaria: a 60 u/s o avião anda uns 6 por
-// quadro e atravessa o aro sem nunca aparecer "dentro" dele. O que vale é o
-// cruzamento do plano da argola entre um quadro e o outro.
 function atualizarCorrida(posAntes, posDepois) {
   if (!corrida || corrida.fim) return;
 
@@ -1262,11 +1069,8 @@ function atualizarCorrida(posAntes, posDepois) {
   argola.worldToLocal(_localAntes.copy(posAntes));
   argola.worldToLocal(_localDepois.copy(posDepois));
 
-  // Sinais iguais: ficou do mesmo lado do plano, não cruzou nada
   if ((_localAntes.z > 0) === (_localDepois.z > 0)) return;
 
-  // Ponto exato onde a trajetória furou o plano — é ele que decide se passou
-  // pelo buraco ou raspou por fora do aro
   const t = _localAntes.z / (_localAntes.z - _localDepois.z);
   const x = _localAntes.x + (_localDepois.x - _localAntes.x) * t;
   const y = _localAntes.y + (_localDepois.y - _localAntes.y) * t;
@@ -1284,8 +1088,6 @@ function atualizarCorrida(posAntes, posDepois) {
 
 btnCorrida.addEventListener('click', () => {
   btnCorrida.blur();
-  // Depois da chegada o mesmo botão recomeça: sair e entrar de novo só para
-  // repetir a volta seria um passo a mais sem motivo
   if (corrida && !corrida.fim) encerrarCorrida();
   else iniciarCorrida();
 });
@@ -1296,12 +1098,8 @@ const _posCamera = new THREE.Vector3();
 const _alvoOlhar = new THREE.Vector3();
 
 function atualizarAviao(dt) {
-  // Guardada antes do passo: a passagem pelas argolas é testada no segmento
-  // percorrido no quadro, não na posição isolada
   _posAnteriorAviao.copy(aviao.position);
 
-  // Teclado e joystick somam. O joystick é analógico, então subir e virar
-  // podem valer frações: meia inclinação faz meia curva.
   const subir = THREE.MathUtils.clamp(
     (teclas.has('KeyW') ? 1 : 0) - (teclas.has('KeyS') ? 1 : 0) + comandoToque.y, -1, 1);
   const turbo = teclas.has('ShiftLeft') || teclas.has('ShiftRight') || comandoToque.turbo;
@@ -1311,26 +1109,24 @@ function atualizarAviao(dt) {
   let taxaGiro = 1.5;
 
   if (manobraRetorno) {
-    // Durante a volta o comando do piloto fica suspenso até o avião terminar
     const restante = normalizarAngulo(manobraRetorno.yawAlvo - estadoAviao.yaw);
     if (Math.abs(restante) < 0.06) {
       estadoAviao.yaw = manobraRetorno.yawAlvo;
       encerrarManobraRetorno();
       virar = 0;
     } else {
-      taxaGiro = 2.6; // a volta é mais rápida que a curva normal
+      taxaGiro = 2.6;
       virar = manobraRetorno.sentido;
     }
   } else {
-    // x da manete cresce para a direita; virar é positivo para a esquerda
     virar = THREE.MathUtils.clamp(
       (teclas.has('KeyA') ? 1 : 0) - (teclas.has('KeyD') ? 1 : 0) - comandoToque.x, -1, 1);
   }
 
   estadoAviao.yaw += virar * taxaGiro * dt;
   estadoAviao.pitch += (subir * 0.45 - estadoAviao.pitch) * Math.min(1, 4 * dt);
-  estadoAviao.roll += (-virar * 0.55 - estadoAviao.roll) * Math.min(1, 4 * dt);
-
+  estadoAviao.roll += (virar * 0.55 - estadoAviao.roll) * Math.min(1, 4 * dt);
+  
   _dirAviao
     .set(0, 0, -1)
     .applyEuler(new THREE.Euler(estadoAviao.pitch, estadoAviao.yaw, 0, 'YXZ'));
@@ -1338,9 +1134,6 @@ function atualizarAviao(dt) {
 
   aviao.position.y = THREE.MathUtils.clamp(aviao.position.y, 6, ALTURA_MAPA - 10);
 
-  // Bateu num prédio: continua sendo empurrado para fora, solta uma explosão
-  // leve no ponto do impacto e mostra as horas ali mesmo. Não há mais manobra
-  // automática de desvio — o comando segue na mão do piloto.
   const batida = resolverColisaoPredios();
   if (batida && avisarBatida(batida.predio.participante)) {
     explodir(batida.ponto, batida.predio.participante);
@@ -1348,14 +1141,12 @@ function atualizarAviao(dt) {
 
   atualizarCorrida(_posAnteriorAviao, aviao.position);
 
-  // Encostou na borda do mapa: dispara a volta e segue voando
   const raio = Math.hypot(aviao.position.x, aviao.position.z);
   if (raio >= RAIO_MAPA && !manobraRetorno) {
     iniciarManobra(yawParaOCentro());
     mostrarAviso('🚧 Limite do mapa — retornando à cidade', 2000);
   }
 
-  // Trava de segurança: mesmo manobrando, não atravessa a parede
   const raioMaximo = RAIO_MAPA + 12;
   if (raio > raioMaximo) {
     const fator = raioMaximo / raio;
@@ -1366,13 +1157,12 @@ function atualizarAviao(dt) {
   aviao.rotation.set(estadoAviao.pitch, estadoAviao.yaw, estadoAviao.roll);
   heliceAviao.rotation.z += (turbo ? 42 : 26) * dt;
 
-  // câmera em perseguição, atrás e acima do avião
   _posCamera
     .set(0, 3.2, 9.5)
     .applyEuler(new THREE.Euler(estadoAviao.pitch * 0.4, estadoAviao.yaw, 0, 'YXZ'))
     .add(aviao.position);
   camera.position.lerp(_posCamera, 1 - Math.pow(0.0005, dt));
-  // mira um pouco abaixo do nariz: mantém os prédios no enquadramento
+
   _alvoOlhar.copy(aviao.position).addScaledVector(_dirAviao, 12);
   _alvoOlhar.y -= 3.2;
   camera.lookAt(_alvoOlhar);
@@ -1388,7 +1178,6 @@ function animar() {
   requestAnimationFrame(animar);
   const dt = Math.min(relogio.getDelta(), 0.1);
 
-  // Os letreiros encaram a câmera (só em torno de Y, para não tombarem)
   for (const o of outdoors) {
     o.rotation.y = Math.atan2(camera.position.x - o.position.x, camera.position.z - o.position.z);
   }
@@ -1401,9 +1190,6 @@ function animar() {
     if (corrida) {
       atualizarHudCorrida();
       if (!corrida.fim) {
-        // Pulsa só o brilho da próxima argola. Pulsar a escala mudaria o raio
-        // do aro em coordenadas locais e, junto com ele, o que conta como
-        // passagem — o alvo do jogo não pode respirar.
         argolas[corrida.indice].material.emissiveIntensity =
           1.4 + Math.sin(relogio.elapsedTime * 5) * 0.6;
       }
@@ -1411,14 +1197,13 @@ function animar() {
   } else {
     if (voo) {
       voo.t = Math.min(1, voo.t + 0.02);
-      const e = 1 - Math.pow(1 - voo.t, 3); // ease-out
+      const e = 1 - Math.pow(1 - voo.t, 3);
       camera.position.lerpVectors(voo.origemCamera, voo.alvoCamera, e);
       controls.target.lerpVectors(voo.origemAlvo, voo.alvoControles, e);
       if (voo.t >= 1) voo = null;
     }
     controls.update();
 
-    // o limite do mapa vale também para a câmera livre
     const raioAlvo = Math.hypot(controls.target.x, controls.target.z);
     if (raioAlvo > RAIO_MAPA) {
       const fator = RAIO_MAPA / raioAlvo;
@@ -1443,8 +1228,6 @@ window.addEventListener('resize', () => {
 fetch('data/participantes.json')
   .then((r) => r.json())
   .then((dados) => {
-    // O servidor também precisa respeitar o teto; aqui é só uma rede de
-    // proteção para o arquivo nunca estourar o mapa.
     participantes = dados.participantes.slice(0, MAX_PREDIOS);
     if (dados.participantes.length > MAX_PREDIOS) {
       console.warn(
@@ -1454,7 +1237,6 @@ fetch('data/participantes.json')
     }
     construirCidade();
 
-    // mesma vista para onde o botão "sair do avião" devolve o usuário
     const vista = vistaGeralCidade();
     camera.position.copy(vista.camera);
     controls.target.copy(vista.alvo);
