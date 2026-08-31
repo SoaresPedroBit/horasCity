@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>horasCity — a cidade das horas Blackboard</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'&gt;&lt;path d='M2 2h14v4h6v16H2V2zm18 6h-4v2h2v2h-2v2h2v2h-2v2h2v2h2V8zm-6-4H4v16h2v-2h6v2h2V4zM6 6h2v2H6V6zm6 0h-2v2h2V6zm-6 4h2v2H6v-2zm6 0h-2v2h2v-2zm-6 4h2v2H6v-2zm6 0h-2v2h2v-2z' fill='%23f7b23b'/&gt;&lt;/svg&gt;">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M2 2h14v4h6v16H2V2zm18 6h-4v2h2v2h-2v2h2v2h-2v2h2v2h2V8zm-6-4H4v16h2v-2h6v2h2V4zM6 6h2v2H6V6zm6 0h-2v2h2V6zm-6 4h2v2H6v-2zm6 0h-2v2h2v-2zm-6 4h2v2H6v-2zm6 0h-2v2h2v-2z' fill='%23f7b23b'/></svg>">
   <link rel="stylesheet" href="css/style.css" />
   <script type="importmap">
     {
@@ -20,13 +20,9 @@
 
   <header id="topbar">
     <h1>🏙️ horasCity</h1>
-    <div id="stats">
-      <span><strong id="stat-participantes">0</strong> / <span id="stat-max">100</span> prédios</span>
-      <span><strong id="stat-horas">0</strong> horas na cidade</span>
-    </div>
+    <button id="btn-meu-predio" hidden>📍 Meu prédio</button>
     <button id="btn-aviao">✈️ Pilotar avião</button>
     <button id="btn-corrida">🏁 Circuito</button>
-    <button id="btn-meu-predio" hidden>📍 Meu prédio</button>
     <button id="btn-participar">＋ Participar da cidade</button>
   </header>
 
@@ -92,8 +88,7 @@
         </p>
         <p class="demo-note">
           ⚠️ As horas ainda não são consultadas automaticamente: a inscrição
-          é registrada agora e as horas entram na próxima atualização. Os
-          prédios já visíveis na cidade são de demonstração.
+          é registrada agora e as horas entram na próxima atualização.
         </p>
         <p id="form-erro" role="alert" hidden></p>
         <div class="modal-actions">
@@ -105,7 +100,7 @@
   </div>
 
   <footer id="rodape">
-    Demonstração com dados fictícios · arraste para passear, role para aproximar
+    Arraste para passear · Role para aproximar
   </footer>
 
   <script type="module" src="js/main.js"></script>

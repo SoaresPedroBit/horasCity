@@ -34,10 +34,11 @@ html, body {
   right: 0;
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 12px;
   padding: 12px 20px;
   background: linear-gradient(to bottom, rgba(11, 16, 32, 0.95), rgba(11, 16, 32, 0));
   pointer-events: none;
+  z-index: 5;
 }
 
 #topbar > * {
@@ -47,21 +48,12 @@ html, body {
 #topbar h1 {
   font-size: 22px;
   letter-spacing: 0.5px;
+  margin-right: auto;
 }
 
-#stats {
-  display: flex;
-  gap: 18px;
-  font-size: 14px;
-  color: var(--text-dim);
-}
-
-#stats strong {
-  color: var(--text);
-  font-size: 16px;
-}
-
-#btn-meu-predio {
+#btn-meu-predio,
+#btn-aviao,
+#btn-corrida {
   padding: 10px 16px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -70,6 +62,7 @@ html, body {
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 #btn-meu-predio[hidden] {
@@ -80,23 +73,6 @@ html, body {
   background: rgba(255, 255, 255, 0.16);
 }
 
-#btn-aviao,
-#btn-corrida {
-  margin-left: 0;
-  padding: 10px 16px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text);
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-#btn-aviao {
-  margin-left: auto;
-}
-
 #btn-aviao:hover,
 #btn-aviao.ativo,
 #btn-corrida:hover,
@@ -105,6 +81,32 @@ html, body {
   border-color: #5ad0e0;
 }
 
+#btn-participar {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #1a1405;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+#btn-participar:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(247, 178, 59, 0.45);
+}
+
+#btn-participar:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-dim);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ---------- Avisos de Voo e Colisão ---------- */
 #aviso-barreira {
   position: fixed;
   top: 78px;
@@ -133,28 +135,6 @@ html, body {
   border-color: rgba(247, 111, 111, 0.55);
   background: rgba(247, 111, 111, 0.18);
   color: #f76f6f;
-}
-
-#form-erro {
-  padding: 9px 11px;
-  margin-bottom: 14px;
-  border-radius: 8px;
-  background: rgba(247, 111, 111, 0.14);
-  color: #f76f6f;
-  font-size: 12.5px;
-  line-height: 1.45;
-}
-
-#form-erro[hidden] {
-  display: none;
-}
-
-#btn-participar:disabled {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-dim);
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
 }
 
 #dicas-voo {
@@ -193,21 +173,46 @@ html, body {
   color: var(--text);
 }
 
-#btn-participar {
-  padding: 10px 18px;
-  border: none;
-  border-radius: 8px;
-  background: var(--accent);
-  color: #1a1405;
-  font-weight: 700;
-  font-size: 14px;
-  cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s;
+/* ---------- HUD do circuito de argolas ---------- */
+#hud-corrida {
+  position: fixed;
+  top: 78px;
+  right: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 150px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-panel);
+  font-size: 13px;
+  color: var(--text-dim);
+  z-index: 6;
+  backdrop-filter: blur(8px);
 }
 
-#btn-participar:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(247, 178, 59, 0.45);
+#hud-corrida[hidden] {
+  display: none;
+}
+
+#hud-corrida strong {
+  color: var(--text);
+}
+
+#corrida-tempo {
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #5ad0e0;
+}
+
+#corrida-recorde {
+  color: var(--accent);
+}
+
+#corrida-recorde[hidden] {
+  display: none;
 }
 
 /* ---------- Tooltip ---------- */
@@ -223,6 +228,10 @@ html, body {
   max-width: 240px;
 }
 
+#tooltip[hidden] {
+  display: none;
+}
+
 #tooltip .t-nome {
   font-weight: 700;
   font-size: 14px;
@@ -234,18 +243,7 @@ html, body {
   font-weight: 700;
 }
 
-#tooltip .t-cats {
-  margin-top: 6px;
-  color: var(--text-dim);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-/* ---------- Modal ---------- */
-#modal-overlay[hidden] {
-  display: none;
-}
-
+/* ---------- Modal de Inscrição ---------- */
 #modal-overlay {
   position: fixed;
   inset: 0;
@@ -254,6 +252,10 @@ html, body {
   justify-content: center;
   background: rgba(0, 0, 0, 0.6);
   z-index: 20;
+}
+
+#modal-overlay[hidden] {
+  display: none;
 }
 
 #modal {
@@ -332,6 +334,20 @@ html, body {
   margin-bottom: 16px;
 }
 
+#form-erro {
+  padding: 9px 11px;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  background: rgba(247, 111, 111, 0.14);
+  color: #f76f6f;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+#form-erro[hidden] {
+  display: none;
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -371,16 +387,7 @@ html, body {
   pointer-events: none;
 }
 
-/* ---------- Telas menores / Celular ---------- */
-@media (width <= 700px) {
-  #topbar h1,
-  #stats {
-    display: none;
-  }
-}
-
-/* ---------- Joystick de toque (modo avião no celular) ---------- */
-
+/* ---------- Controles de Toque (Celular) ---------- */
 #controles-toque {
   position: fixed;
   inset: 0;
@@ -470,45 +477,9 @@ html, body {
   background: rgba(247, 178, 59, 0.34);
 }
 
-/* ---------- HUD do circuito de argolas ---------- */
-
-#hud-corrida {
-  position: fixed;
-  top: 78px;
-  right: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 150px;
-  padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--bg-panel);
-  font-size: 13px;
-  color: var(--text-dim);
-  z-index: 6;
-  backdrop-filter: blur(8px);
-}
-
-#hud-corrida[hidden] {
-  display: none;
-}
-
-#hud-corrida strong {
-  color: var(--text);
-}
-
-#corrida-tempo {
-  font-size: 26px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: #5ad0e0;
-}
-
-#corrida-recorde {
-  color: var(--accent);
-}
-
-#corrida-recorde[hidden] {
-  display: none;
+/* ---------- Responsividade ---------- */
+@media (max-width: 700px) {
+  #topbar h1 {
+    display: none;
+  }
 }
