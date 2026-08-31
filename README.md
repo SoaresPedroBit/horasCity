@@ -4,9 +4,9 @@ Uma cidade 3D onde cada prédio é um aluno e a altura do prédio são as horas
 Blackboard dele no sistema da faculdade. Inspirado no
 [GitHub City](https://github.com/honzaap/GithubCity) / conceito CodeCity.
 
-Qualquer pessoa pode passear pela cidade. Um aluno pode informar seu RA,
-aceitar participar, e o prédio dele passa a fazer parte da cidade — podendo
-voltar depois para encontrar o próprio prédio e ver seu total de horas.
+Qualquer pessoa pode passear pela cidade. Um aluno pode informar seu RA e
+aceitar participar; a inscrição fica registrada e o prédio entra na cidade na
+próxima atualização do `data/participantes.json`.
 
 ## Como rodar localmente
 
@@ -27,8 +27,13 @@ Depois abra `http://localhost:3000` (ou `:8000`).
   - Altura = total de horas · cor/largura = variação determinística pelo id
     público · posição = espiral pela ordem de entrada (a cidade cresce sem
     mover ninguém)
-- ✅ Botão "Meu prédio": leva a câmera até o prédio de quem já participa
-  (usa o id salvo no navegador — não pede o RA de novo)
+- ⚠️ Botão "Meu prédio": **inativo**. O código está todo lá (`lerMeuId`,
+  `CHAVE_MEU_ID`, o listener do botão), mas quem gravava a chave era o fluxo
+  de adesão antigo. Hoje nada escreve `horascity:meu-id`, então `jaParticipa`
+  é sempre falso e o botão nunca aparece. Faz sentido: a adesão virou
+  assíncrona e não há `id` para guardar no ato — ele só existe quando a
+  inscrição vira uma linha do JSON. Enquanto isso não se resolve, não há como
+  reencontrar o próprio prédio
 - ✅ Sair do avião (botão ou `Esc`) devolve a câmera à vista geral da cidade.
   O afastamento dessa vista acompanha o tamanho da espiral, então a cidade
   inteira continua cabendo no quadro conforme ela cresce até 100 prédios.
@@ -70,8 +75,11 @@ Depois abra `http://localhost:3000` (ou `:8000`).
 - ✅ Teto de **100 prédios**. O contador no topo mostra `N / 100`; quando
   lota, o botão vira "Cidade lotada" e o cadastro é recusado com aviso no
   próprio formulário (quem já tem prédio continua podendo atualizar as horas)
-- ✅ Fluxo "Participar da cidade" com consentimento — **em modo demo**: as
-  horas são geradas de forma fictícia
+- ✅ Fluxo "Participar da cidade" com consentimento, enviando RA + apelido
+  para um **Google Forms** (`js/formulario.js`). Os prédios já visíveis na
+  cidade continuam sendo dados de demonstração: a consulta das horas na
+  faculdade ainda é manual, e a inscrição só vira prédio quando o
+  `participantes.json` é atualizado
 - ✅ Modelo de privacidade sem RA no lado público (ver abaixo)
 - ✅ Circuito de argolas contra o relógio (botão "🏁 Circuito"): oito argolas
   em cruzamentos de rua — o único ponto da malha onde é certo não haver
@@ -91,9 +99,12 @@ Depois abra `http://localhost:3000` (ou `:8000`).
   dos `dt`, que é clampada em 0,1 s e daria tempo de brinde a quem trava.
   O recorde fica no `localStorage`
 - ⬜ Leaderboard online do circuito (Supabase)
-- ⬜ Integração com a API real da faculdade
-- ⬜ Persistência real dos participantes
-- ⬜ Botão "sair da cidade" (remoção do registro)
+- ⬜ Integração com a API real da faculdade (hoje a consulta das horas é feita
+  à mão a partir da planilha de respostas)
+- ⬜ Devolver o `id` ao navegador para reativar o "Meu prédio"
+- ⬜ Botão "sair da cidade" (remoção do registro). O checkbox de consentimento
+  já promete "posso sair quando quiser", então hoje isso só vale como
+  compromisso manual
 
 ## Privacidade — a regra central do projeto
 
@@ -104,8 +115,23 @@ ele.** O que a cidade expõe é apenas:
 { "id": "9896194fbbde957e", "apelido": "Pedro S.", "horas": 125 }
 ```
 
-O `id` é um valor **aleatório**, sorteado no servidor no momento do cadastro.
-Ele não é derivado do RA.
+O `id` é um valor **aleatório**, atribuído no momento em que a inscrição vira
+uma linha do JSON. Ele não é derivado do RA.
+
+### Onde o RA está hoje
+
+O RA sai do navegador uma única vez, num `POST` para um Google Forms
+(`js/formulario.js`), e cai numa **planilha privada**. Essa planilha é o
+mapeamento `RA → apelido` do projeto — o equivalente ao que o desenho abaixo
+chama de "guarda RA → id, privado, só no servidor". Duas consequências que a
+versão anterior deste documento não previa:
+
+- **O Google passa a ver o RA.** A planilha é privada, mas a requisição é
+  registrada por um terceiro. Não é o mesmo que publicar, mas é mais gente
+  vendo o RA do que o desenho original previa.
+- **O Forms carimba data e hora de cada resposta**, automaticamente. Isso não
+  quebra nada enquanto o carimbo ficar na planilha; quebra a regra 6 abaixo no
+  dia em que alguém copiar a planilha inteira para o JSON público.
 
 ### Por que não basta "hashear" o RA
 
@@ -123,15 +149,19 @@ HMAC com segredo que fique exclusivamente no servidor.
   para quem for editá-lo depois.
 - O RA existe apenas dentro do formulário de adesão, é enviado uma vez e o
   campo é limpo em seguida — não entra na lista de participantes em memória.
-- O navegador guarda só o `id` público (`localStorage`), nunca o RA. É o que
-  faz o marcador "você" e o botão "Meu prédio" funcionarem sem pedir o RA de
-  novo.
+- O navegador nunca guarda o RA. Hoje o `localStorage` só guarda o recorde do
+  circuito; a chave `horascity:meu-id` existe no código mas não é mais
+  escrita (ver "Meu prédio" no estado atual).
 - Não existe busca por RA em lugar nenhum: seria um oráculo de "o RA X está
   na cidade como fulano, com N horas".
 - O apelido é validado contra sequências de 4+ dígitos (evita que alguém use
   o próprio RA como apelido) e escapado antes de ir para o HTML.
 
 ### O que o backend precisa respeitar
+
+Estas regras foram escritas para o backend próprio que ainda não existe. Com o
+Google Forms no lugar dele, as que dependem de código de servidor (1, 3, 4, 7)
+estão **em aberto**, não cumpridas — ver a seção seguinte.
 
 1. O `id` é gerado com um gerador criptográfico (`crypto.randomUUID()`,
    `secrets.token_hex()`), **nunca** a partir do RA.
@@ -150,10 +180,24 @@ HMAC com segredo que fique exclusivamente no servidor.
 
 ### Ainda em aberto
 
-- **Posse do RA**: com um `GET` aberto, alguém pode cadastrar o RA de outra
-  pessoa e expor as horas dela sob um apelido qualquer. A correção real é
-  provar a posse — login institucional ou confirmação por e-mail da
-  faculdade — antes de criar o prédio.
+- **O endpoint de inscrição é público.** A URL do formulário e os dois
+  `entry.` estão no JavaScript, à vista de qualquer um que abra o DevTools.
+  Dá para fazer `POST` direto, quantas vezes se quiser, com qualquer RA e
+  qualquer apelido — sem rate limit e sem prova de posse. É a regra 4 acima
+  não cumprida, e não tem conserto limpo dentro do Google Forms: o endpoint é
+  público por natureza. É o argumento mais forte a favor de trocá-lo por uma
+  função de servidor com a chave do lado de lá.
+- **Posse do RA**: alguém pode inscrever o RA de outra pessoa sob um apelido
+  qualquer. Deixou de ser hipótese — com o endpoint aberto, é o caminho de
+  menor esforço. A correção real é provar a posse: login institucional ou
+  confirmação por e-mail da faculdade antes de criar o prédio.
+- **O envio não sabe se deu certo.** O `fetch` usa `mode: 'no-cors'`, então a
+  resposta é opaca: erros HTTP (formulário fechado, `entry.` errado) resolvem
+  como sucesso, e só uma falha de rede rejeita. Na prática o `catch` de
+  `js/formulario.js` quase nunca dispara e a mensagem de "inscrição enviada"
+  aparece de qualquer jeito. É inerente a postar num Forms de outra origem;
+  o jeito de não ser pego de surpresa é conferir a planilha depois de mexer
+  nos `entry.`.
 - **Turmas pequenas**: em cursos com poucos participantes, "maior número de
   horas" pode identificar alguém mesmo sem o RA. Está coberto pelo
   consentimento, mas vale ter o botão de sair funcionando.
@@ -162,40 +206,55 @@ HMAC com segredo que fique exclusivamente no servidor.
   cada pessoa tem, o tooltip precisa mudar junto — hoje ele expõe o mesmo par
   apelido↔horas, só que um prédio por vez.
 
-## Arquitetura planejada
+## Arquitetura
+
+### Como está hoje
 
 ```
-[Aluno]                                    [GitHub Pages / Vercel]
+[Aluno]                                    [GitHub Pages]
    │  RA + apelido + consentimento              │ serve index.html
-   │  (o RA para aqui ─────────┐)               │ e participantes.json
-   ▼                           │               ▲   (sem RA nenhum)
-[Serverless function] ──GET /horas/{RA}──► [API da faculdade]
-   │                           │
-   │  guarda RA → id  ─────────┘  (privado, só no servidor)
-   │
-   └── grava { id, apelido, horas } no arquivo público
-   ◄── devolve ao navegador APENAS { id, horas }
+   │                                            │ e participantes.json
+   ▼                                            ▲   (sem RA nenhum)
+[Google Forms] ──► [Planilha privada]           │
+                     RA + apelido + carimbo     │
+                          │                     │
+                          │  consulta das horas na faculdade: MANUAL
+                          └──► commit à mão em data/participantes.json
+                               { id, apelido, horas }
 ```
 
-- **Frontend**: 100% estático. Lê o JSON e desenha a cidade.
-- **Escrita**: o navegador não consegue gravar num site estático, então a
-  adesão passa por uma função mínima (Vercel/Cloudflare, gratuita) que:
-  1. recebe o RA e o apelido;
-  2. faz o `GET` na API da faculdade e obtém as horas;
-  3. sorteia um `id` aleatório (ou recupera o já existente para aquele RA);
-  4. grava `{ id, apelido, horas }` no arquivo público — commit via GitHub API
-     ou insert no Supabase;
-  5. responde `{ id, horas }`. O RA não volta.
-- **Atualização**: as horas ficam gravadas até a próxima consulta — quando o
-  aluno volta e informa o RA, a função reconsulta, atualiza o registro e
-  reencontra o mesmo `id`. Opcionalmente, um cron atualiza todo mundo.
+- **Frontend**: 100% estático, sem build. Lê o JSON e desenha a cidade.
+- **Escrita**: o navegador não grava num site estático, então a adesão só
+  registra a intenção — um `POST` no Google Forms. Nada volta para o
+  navegador (`no-cors`), nem mesmo se deu certo.
+- **Fechamento do ciclo**: hoje é manual. Alguém lê a planilha, consulta as
+  horas, sorteia um `id` e faz o commit. Enquanto for assim, o `id` nunca
+  chega ao navegador de quem se inscreveu — por isso o "Meu prédio" está
+  inativo.
+
+### Para onde vai
+
+Trocar o Forms por uma função mínima (Vercel/Cloudflare/Supabase, no plano
+gratuito) que:
+
+1. recebe o RA e o apelido;
+2. faz o `GET` na API da faculdade e obtém as horas;
+3. sorteia um `id` aleatório (ou recupera o já existente para aquele RA);
+4. grava `{ id, apelido, horas }` no armazenamento público;
+5. responde `{ id, horas }`. O RA não volta.
+
+É o que fecha de uma vez as três pendências que hoje andam juntas: o rate
+limit, o "Meu prédio" e a atualização das horas sem trabalho manual.
 
 ## Estrutura
 
 ```
 index.html               página única (UI + importmap do Three.js)
 css/style.css            estilos dos painéis/modal
-js/main.js               cena 3D, cidade, limite do mapa, voo, fluxo de adesão
+js/main.js               cena 3D, cidade, ruas, limite do mapa, voo,
+                         circuito de argolas
+js/formulario.js         modal de adesão e o envio ao Google Forms — é o único
+                         arquivo que toca no RA
 js/aviao.js              só o modelo 3D do avião (nariz para -Z)
 data/participantes.json  "banco de dados" PÚBLICO da cidade — jamais com RA
 preview-aviao.html       ferramenta de desenvolvimento: renderiza o avião em

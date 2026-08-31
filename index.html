@@ -60,8 +60,8 @@
     <div id="modal">
       <h2>Participar da horasCity</h2>
       <p class="modal-desc">
-        Suas horas Blackboard serão consultadas no sistema da faculdade e
-        seu prédio passará a fazer parte da cidade.
+        Sua inscrição fica registrada e o prédio entra na cidade na próxima
+        atualização — ele não aparece na hora.
       </p>
       <form id="form-participar" autocomplete="off">
         <label>
@@ -69,8 +69,8 @@
           <input type="text" id="input-ra" required pattern="\d{4,12}"
                  inputmode="numeric" autocomplete="off" placeholder="Ex.: 20231234" />
           <small class="campo-ajuda">
-            Usado só para buscar suas horas neste momento. Não é salvo no
-            navegador nem publicado na cidade.
+            Enviado para uma planilha privada, usada só para consultar suas
+            horas. Não fica salvo no navegador nem é publicado na cidade.
           </small>
         </label>
         <label>
@@ -91,8 +91,9 @@
           aleatório. Ninguém consegue descobrir seu RA a partir dela.
         </p>
         <p class="demo-note">
-          ⚠️ Modo demonstração: as horas serão geradas de forma fictícia.
-          Na versão final este passo consulta a API da faculdade.
+          ⚠️ As horas ainda não são consultadas automaticamente: a inscrição
+          é registrada agora e as horas entram na próxima atualização. Os
+          prédios já visíveis na cidade são de demonstração.
         </p>
         <p id="form-erro" role="alert" hidden></p>
         <div class="modal-actions">
