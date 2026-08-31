@@ -371,7 +371,9 @@ html, body {
   pointer-events: none;
 }
 
-@media (max-width: 700px) {
+/* ---------- Telas menores / Celular ---------- */
+@media (width <= 700px) {
+  #topbar h1,
   #stats {
     display: none;
   }
@@ -379,8 +381,6 @@ html, body {
 
 /* ---------- Joystick de toque (modo avião no celular) ---------- */
 
-/* A camada cobre a tela inteira, mas só o joystick e o TURBO recebem o toque:
-   o resto continua livre para os gestos da cidade. */
 #controles-toque {
   position: fixed;
   inset: 0;
@@ -392,7 +392,6 @@ html, body {
   display: none;
 }
 
-/* Com o joystick na tela o rodapé fica embaixo dele em telas estreitas */
 #controles-toque:not([hidden]) ~ #rodape {
   display: none;
 }
@@ -408,13 +407,11 @@ html, body {
   background: rgba(13, 18, 32, 0.55);
   backdrop-filter: blur(6px);
   pointer-events: auto;
-  /* sem isto o dedo arrasta a página e dá zoom em vez de pilotar */
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
 }
 
-/* Cruz de referência: mostra os eixos sem competir com a manete */
 #joystick::before,
 #joystick::after {
   content: '';
@@ -473,7 +470,6 @@ html, body {
   background: rgba(247, 178, 59, 0.34);
 }
 
-
 /* ---------- HUD do circuito de argolas ---------- */
 
 #hud-corrida {
@@ -502,8 +498,6 @@ html, body {
   color: var(--text);
 }
 
-/* O cronômetro é o que se lê de relance no meio da curva: tabular-nums evita
-   que o número dance de largura a cada centésimo */
 #corrida-tempo {
   font-size: 26px;
   font-weight: 700;
