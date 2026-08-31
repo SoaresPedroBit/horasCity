@@ -561,6 +561,6 @@ fetch('data/participantes.json')
   .catch((err) => {
     console.error('Falha ao carregar participantes.json:', err);
     document.getElementById('rodape').textContent =
-      'Erro ao carregar os dados — abra o site por um servidor local (ex.: npx serve).';
+      'Erro ao carregar os dados.';
     animar();
   });
