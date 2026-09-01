@@ -56,25 +56,22 @@
     <div id="modal">
       <h2>Participar da horasCity</h2>
       <p class="modal-desc">
-        Sua inscrição fica registrada e o prédio entra na cidade na próxima
-        atualização - ele não aparece na hora.
+        Tenha seu prédio na cidade e acompanhe suas horas na Blackboard.
       </p>
       <form id="form-participar" autocomplete="off">
         <label>
-          RA (Registro Acadêmico)
+          RA
           <input type="text" id="input-ra" required pattern="\d{4,12}"
-                 inputmode="numeric" autocomplete="off" placeholder="Ex.: 20231234" />
+                 inputmode="numeric" autocomplete="off" placeholder="Ex.: 504040" />
           <small class="campo-ajuda">
-            Enviado para uma planilha privada, usada só para consultar suas
-            horas. Não fica salvo no navegador nem é publicado na cidade.
+            Seu RA não fica público.
           </small>
         </label>
         <label>
-          Apelido exibido na cidade
+          Apelido
           <input type="text" id="input-apelido" required maxlength="20" placeholder="Como você quer aparecer" />
           <small class="campo-ajuda">
-            Fica público. Não use seu RA nem seu nome completo se não quiser
-            ser identificado.
+            Use um apelido que se sinta confortável em mostrar publicamente. Evite dados pessoais.
           </small>
         </label>
         <label class="checkbox">
@@ -83,12 +80,10 @@
           na cidade. Posso sair quando quiser.
         </label>
         <p class="privacidade-note">
-          🔒 A cidade pública guarda apenas apelido, horas e um código
-          aleatório. Ninguém consegue descobrir seu RA a partir dela.
+          🔒 Guardamos apenas seu apelido e horas.
         </p>
         <p class="demo-note">
-          ⚠️ As horas ainda não são consultadas automaticamente: a inscrição
-          é registrada agora e as horas entram na próxima atualização.
+          ⚠️ As atualizações são feitas conforme a disponibilidade de dados.
         </p>
         <p id="form-erro" role="alert" hidden></p>
         <div class="modal-actions">
