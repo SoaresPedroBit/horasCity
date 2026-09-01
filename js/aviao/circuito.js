@@ -23,6 +23,8 @@ export class CircuitoCorrida {
 
     this.argolas = [];
     this.corrida = null;
+    this.jaCompletouUmaVez = false; 
+
     this.hud = document.getElementById('hud-corrida');
     this.elTempo = document.getElementById('corrida-tempo');
     this.elProgresso = document.getElementById('corrida-progresso');
@@ -30,6 +32,9 @@ export class CircuitoCorrida {
     this.btnCorrida = document.getElementById('btn-corrida');
 
     this._montar();
+    this._atualizarRecorde();
+    this._atualizarBtn();
+
     this.btnCorrida.addEventListener('click', () => {
       this.btnCorrida.blur();
       if (this.corrida && !this.corrida.fim) this.parar();
@@ -56,12 +61,22 @@ export class CircuitoCorrida {
     });
   }
 
+  _atualizarRecorde() {
+    if (!this.elRecorde) return;
+    const bruto = Number(localStorage.getItem(STORAGE_KEY_RECORDE));
+    this.elRecorde.hidden = !bruto;
+    if (bruto) {
+      this.elRecorde.textContent = `recorde ${(bruto / 1000).toFixed(2)}s`;
+    }
+  }
+
   iniciar() {
     this.corrida = { indice: 0, inicio: null, fim: null };
     this.grupo.visible = true;
-    this.hud.hidden = false;
+    if (this.hud) this.hud.hidden = false;
     this._pintar();
     this._atualizarBtn();
+    this._atualizarRecorde();
 
     const primeira = this.argolas[0];
     const dir = primeira.userData.dir;
@@ -78,7 +93,11 @@ export class CircuitoCorrida {
   parar() {
     this.corrida = null;
     this.grupo.visible = false;
-    this.hud.hidden = true;
+
+    if (this.elTempo) this.elTempo.textContent = '';
+    if (this.elProgresso) this.elProgresso.textContent = '';
+
+    this._atualizarRecorde();
     this._atualizarBtn();
   }
 
@@ -92,24 +111,26 @@ export class CircuitoCorrida {
   }
 
   _atualizarBtn() {
-    this.btnCorrida.classList.toggle('ativo', this.corrida !== null);
-    this.btnCorrida.textContent = !this.corrida
-      ? '🏁 Circuito'
-      : this.corrida.fim
-      ? '🔁 Correr de novo'
-      : '✕ Sair do circuito';
+    const emAndamento = this.corrida !== null && !this.corrida.fim;
+    this.btnCorrida.classList.toggle('ativo', emAndamento);
+
+    if (emAndamento) {
+      this.btnCorrida.textContent = '✕ Sair do circuito';
+    } else if (this.jaCompletouUmaVez || (this.corrida && this.corrida.fim)) {
+      this.btnCorrida.textContent = '🔁 Correr de novo';
+    } else {
+      this.btnCorrida.textContent = '🏁 Circuito';
+    }
   }
 
   atualizar(posAntes, posDepois, tDecorrido) {
     if (!this.corrida || this.corrida.fim) return;
 
     const decorrido = this.corrida.inicio === null ? 0 : performance.now() - this.corrida.inicio;
-    this.elTempo.textContent = `${(decorrido / 1000).toFixed(2)}s`;
-    this.elProgresso.textContent = `${this.corrida.indice} / ${this.argolas.length} argolas`;
+    if (this.elTempo) this.elTempo.textContent = `${(decorrido / 1000).toFixed(2)}s`;
+    if (this.elProgresso) this.elProgresso.textContent = `${this.corrida.indice} / ${this.argolas.length} argolas`;
 
     const bruto = Number(localStorage.getItem(STORAGE_KEY_RECORDE));
-    this.elRecorde.hidden = !bruto;
-    if (bruto) this.elRecorde.textContent = `recorde ${(bruto / 1000).toFixed(2)}s`;
 
     this.argolas[this.corrida.indice].material.emissiveIntensity =
       1.4 + Math.sin(tDecorrido * 5) * 0.6;
@@ -128,11 +149,22 @@ export class CircuitoCorrida {
         this._pintar();
         if (this.corrida.indice >= this.argolas.length) {
           this.corrida.fim = performance.now();
+          this.jaCompletouUmaVez = true; 
+
           const ms = this.corrida.fim - this.corrida.inicio;
           const superou = !bruto || ms < bruto;
-          if (superou) localStorage.setItem(STORAGE_KEY_RECORDE, String(Math.round(ms)));
+          if (superou) {
+            localStorage.setItem(STORAGE_KEY_RECORDE, String(Math.round(ms)));
+          }
+          this._atualizarRecorde();
           this.onFinalizado(ms, bruto, superou);
           this._atualizarBtn();
+
+          setTimeout(() => {
+            if (this.corrida && this.corrida.fim) {
+              this.parar();
+            }
+          }, 2500);
         }
       }
     }
