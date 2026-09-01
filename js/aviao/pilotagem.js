@@ -4,6 +4,7 @@ import { EntradaControles } from './controles.js';
 import { CircuitoCorrida } from './circuito.js';
 import { SistemaExplosoes } from './efeitos.js';
 import { LIMITES_MAPA } from '../cidade/cena.js';
+import { escaparHtml } from '../util.js';
 
 export class GerenciadorPilotagem {
   constructor(cenaCidade, onAlternarModo) {
@@ -135,7 +136,7 @@ export class GerenciadorPilotagem {
 
         if (this.predioAvisado !== c.participante) {
           this.predioAvisado = c.participante;
-          this.mostrarAviso(`💥 Bateu no prédio de <strong>${c.participante.apelido}</strong> — <strong>${c.participante.horas}h</strong> Blackboard`, 2800, true);
+          this.mostrarAviso(`💥 Bateu no prédio de <strong>${escaparHtml(c.participante.apelido)}</strong> — <strong>${c.participante.horas}h</strong> Blackboard`, 2800, true);
           this.explosoes.criar(new THREE.Vector3(px, py, pz), c.participante);
           clearTimeout(this.timerPredio);
           this.timerPredio = setTimeout(() => (this.predioAvisado = null), 2800);
