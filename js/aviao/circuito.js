@@ -149,7 +149,7 @@ export class CircuitoCorrida {
         this._pintar();
         if (this.corrida.indice >= this.argolas.length) {
           this.corrida.fim = performance.now();
-          this.jaCompletouUmaVez = true; // Marca que o jogador completou o trajeto
+          this.jaCompletouUmaVez = true; 
 
           const ms = this.corrida.fim - this.corrida.inicio;
           const superou = !bruto || ms < bruto;
