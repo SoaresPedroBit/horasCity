@@ -484,6 +484,184 @@ html, body {
   background: rgba(247, 178, 59, 0.34);
 }
 
+/* ---------- Anúncio dos dirigíveis (easter egg) ---------- */
+#anuncio-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 30;
+}
+
+#anuncio-overlay[hidden] {
+  display: none;
+}
+
+#anuncio-modal {
+  position: relative;
+  width: min(380px, 92vw);
+  padding: 26px 22px 22px;
+  background: #fffdf4;
+  color: #1a1a1a;
+  border: 4px solid #f7d23b;
+  border-radius: 10px;
+  box-shadow: 0 0 0 4px #d32f2f, 0 20px 60px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  font-family: Arial, "Segoe UI", sans-serif;
+}
+
+#anuncio-fechar {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.anuncio-selo {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #d32f2f;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  animation: anuncio-piscar 1s steps(1) infinite;
+}
+
+@keyframes anuncio-piscar {
+  50% { opacity: 0.35; }
+}
+
+#anuncio-texto {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.35;
+  margin-bottom: 16px;
+}
+
+.anuncio-pix {
+  margin-bottom: 14px;
+}
+
+#anuncio-qr-botao {
+  padding: 6px;
+  border: 2px dashed #00b0ff;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+
+#anuncio-qr-botao img {
+  display: block;
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+}
+
+.anuncio-pix-legenda {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #444;
+  line-height: 1.4;
+}
+
+.anuncio-status {
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.anuncio-status[hidden] {
+  display: none;
+}
+
+.anuncio-status.processando {
+  background: rgba(0, 176, 255, 0.14);
+  color: #0077a8;
+}
+
+.anuncio-status.erro {
+  background: rgba(211, 47, 47, 0.14);
+  color: #d32f2f;
+}
+
+.anuncio-acoes {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  min-height: 90px;
+}
+
+.anuncio-acoes button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#anuncio-pago {
+  background: #34c98e;
+  color: #062;
+}
+
+#anuncio-sair {
+  background: #e2e2e2;
+  color: #333;
+  position: relative;
+  transition: transform 0.16s ease-out;
+}
+
+.anuncio-acoes button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+#anuncio-conteudo-foto img {
+  display: block;
+  width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  background: #10131a;
+}
+
+.anuncio-foto-legenda {
+  font-size: 13px;
+  color: #333;
+  margin-bottom: 14px;
+  line-height: 1.4;
+}
+
+#anuncio-foto-voltar {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #1a1a1a;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 /* ---------- Responsividade ---------- */
 @media (max-width: 700px) {
   #topbar h1 {

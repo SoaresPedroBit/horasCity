@@ -94,6 +94,37 @@
     </div>
   </div>
 
+  <div id="anuncio-overlay" hidden>
+    <div id="anuncio-modal">
+      <button id="anuncio-fechar" type="button" aria-label="Fechar anúncio">✕</button>
+
+      <div id="anuncio-conteudo-ad">
+        <span class="anuncio-selo">PUBLICIDADE</span>
+        <p id="anuncio-texto"></p>
+
+        <div class="anuncio-pix">
+          <button id="anuncio-qr-botao" type="button" title="Escaneie ou toque no QR Code">
+            <img id="anuncio-qr" width="180" height="180" alt="QR Code Pix" />
+          </button>
+          <p class="anuncio-pix-legenda">📱 Escaneie o QR Code Pix e finalize agora — sua vaga expira em instantes!</p>
+        </div>
+
+        <p id="anuncio-status" class="anuncio-status" hidden></p>
+
+        <div class="anuncio-acoes">
+          <button id="anuncio-pago" type="button">✅ Pagamento efetuado</button>
+          <button id="anuncio-sair" type="button">Sair</button>
+        </div>
+      </div>
+
+      <div id="anuncio-conteudo-foto" hidden>
+        <img id="anuncio-foto" src="data/piada-pix.jpg" alt="Você caiu na pegadinha!" />
+        <p class="anuncio-foto-legenda">🎉 Relaxa, Ninguém vai cobrar Pix nenhum por aqui. Mas aceitamos doações</p>
+        <button id="anuncio-foto-voltar" type="button">Voltar</button>
+      </div>
+    </div>
+  </div>
+
   <footer id="rodape">
     Arraste para passear · Role para aproximar
   </footer>
