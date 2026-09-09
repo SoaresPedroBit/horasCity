@@ -20,10 +20,22 @@
 
   <header id="topbar">
     <h1>🏙️ horasCity</h1>
+
+    <!-- controles do app solo (minhas horas pela chave da API) -->
+    <span id="ui-solo" hidden>
+      <span id="chip-horas" hidden></span>
+      <button id="btn-atualizar" hidden>🔄 Atualizar horas</button>
+      <button id="btn-chave">🔑 Minhas horas</button>
+    </span>
+
     <button id="btn-meu-predio" hidden>📍 Meu prédio</button>
     <button id="btn-aviao">✈️ Pilotar avião</button>
     <button id="btn-corrida">🏁 Circuito</button>
-    <button id="btn-participar">＋ Participar da cidade</button>
+
+    <!-- controles do app cidade (lista pública de participantes) -->
+    <span id="ui-cidade" hidden>
+      <button id="btn-participar">＋ Participar da cidade</button>
+    </span>
   </header>
 
   <div id="aviso-barreira" hidden>🚧 Limite do mapa - retornando à cidade</div>
@@ -89,6 +101,46 @@
         <div class="modal-actions">
           <button type="button" id="btn-cancelar">Cancelar</button>
           <button type="submit" id="btn-confirmar">Entrar na cidade</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="chave-overlay" hidden>
+    <div id="modal-chave">
+      <h2>Minhas horas ao vivo</h2>
+      <p class="modal-desc">
+        Cole a sua chave da API de horas. Ela fica só neste navegador e serve
+        apenas para buscar as <strong>suas</strong> horas — a cidade cresce em
+        volta do seu prédio conforme você avança até 15h.
+      </p>
+      <form id="form-chave" autocomplete="off">
+        <label>
+          Chave da API
+          <input type="password" id="input-chave" required placeholder="chk_live_..."
+                 autocomplete="off" spellcheck="false" />
+          <small class="campo-ajuda">
+            Pegue em <a href="https://horas.zibikoski.com.br/api/painel" target="_blank" rel="noopener">/api/painel</a>.
+            Nunca compartilhe: a chave também permite apagar sua conta.
+          </small>
+        </label>
+        <label>
+          Apelido
+          <input type="text" id="input-chave-apelido" required maxlength="20"
+                 placeholder="Como você quer aparecer" />
+          <small class="campo-ajuda">
+            Aparece no outdoor em cima do seu prédio. Evite dados pessoais.
+          </small>
+        </label>
+        <p class="privacidade-note">
+          🔒 A chave não sai deste navegador. O RA e o nome que a API devolve
+          são descartados na hora — a cidade só conhece apelido e horas.
+        </p>
+        <p id="chave-erro" role="alert" hidden></p>
+        <div class="modal-actions">
+          <button type="button" id="btn-chave-desconectar" hidden>Desconectar</button>
+          <button type="button" id="btn-chave-cancelar">Cancelar</button>
+          <button type="submit" id="btn-chave-confirmar">Conectar</button>
         </div>
       </form>
     </div>

@@ -662,9 +662,168 @@ html, body {
   cursor: pointer;
 }
 
+/* ---------- Painel do modo solo (minhas horas) ---------- */
+#ui-solo,
+#ui-cidade {
+  display: contents;
+}
+
+#ui-solo[hidden],
+#ui-cidade[hidden] {
+  display: none;
+}
+
+#chip-horas {
+  padding: 8px 14px;
+  border: 1px solid rgba(247, 178, 59, 0.45);
+  border-radius: 999px;
+  background: rgba(247, 178, 59, 0.14);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+#chip-horas[hidden],
+#btn-atualizar[hidden] {
+  display: none;
+}
+
+#btn-atualizar,
+#btn-chave {
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+#btn-atualizar:hover:not(:disabled),
+#btn-chave:hover {
+  background: rgba(90, 208, 224, 0.25);
+  border-color: #5ad0e0;
+}
+
+#btn-atualizar:disabled {
+  color: var(--text-dim);
+  cursor: progress;
+}
+
+/* ---------- Modal da chave da API ---------- */
+#chave-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 20;
+}
+
+#chave-overlay[hidden] {
+  display: none;
+}
+
+#modal-chave {
+  width: min(460px, 92vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  background: #131a2c;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+}
+
+#modal-chave h2 {
+  margin-bottom: 8px;
+}
+
+#form-chave label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+#form-chave input {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+
+#form-chave input:focus {
+  border-color: #5ad0e0;
+}
+
+#form-chave .campo-ajuda a {
+  color: var(--accent);
+}
+
+#chave-erro {
+  margin-bottom: 12px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: rgba(247, 111, 111, 0.16);
+  color: #ffb4b4;
+  font-size: 13px;
+}
+
+#chave-erro[hidden] {
+  display: none;
+}
+
+#btn-chave-cancelar,
+#btn-chave-desconectar {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+#btn-chave-desconectar {
+  margin-right: auto;
+  color: #ffb4b4;
+}
+
+#btn-chave-desconectar[hidden] {
+  display: none;
+}
+
+#btn-chave-confirmar {
+  background: var(--accent);
+  color: #1a1405;
+}
+
+#btn-chave-confirmar:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-dim);
+  cursor: progress;
+}
+
 /* ---------- Responsividade ---------- */
 @media (max-width: 700px) {
   #topbar h1 {
     display: none;
+  }
+
+  #topbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  #topbar button,
+  #chip-horas {
+    padding: 8px 12px;
+    font-size: 13px;
   }
 }

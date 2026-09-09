@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { formatarHoras } from '../util.js';
 
 const texFaisca = (() => {
   const c = document.createElement('canvas');
@@ -18,9 +19,9 @@ const texFaisca = (() => {
 
 const cacheHoras = new Map();
 
-function obterTexturaHoras(horas) {
-  if (cacheHoras.has(horas)) {
-    return cacheHoras.get(horas);
+function obterTexturaHoras(rotulo) {
+  if (cacheHoras.has(rotulo)) {
+    return cacheHoras.get(rotulo);
   }
 
   const L = 256;
@@ -36,11 +37,11 @@ function obterTexturaHoras(horas) {
   ctx.shadowColor = '#ff9a3c';
   ctx.shadowBlur = 22;
   ctx.fillStyle = '#ffcf7a';
-  ctx.fillText(`${horas}h`, L / 2, A / 2 - 12);
+  ctx.fillText(rotulo, L / 2, A / 2 - 12);
 
   ctx.shadowBlur = 0;
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(`${horas}h`, L / 2, A / 2 - 12);
+  ctx.fillText(rotulo, L / 2, A / 2 - 12);
 
   ctx.font = 'bold 22px system-ui, "Segoe UI", Arial, sans-serif';
   ctx.fillStyle = '#ffd9a8';
@@ -48,7 +49,7 @@ function obterTexturaHoras(horas) {
 
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  cacheHoras.set(horas, tex);
+  cacheHoras.set(rotulo, tex);
   return tex;
 }
 
@@ -105,7 +106,7 @@ export class SistemaExplosoes {
 
     const etiqueta = new THREE.Sprite(
       new THREE.SpriteMaterial({
-        map: obterTexturaHoras(participante.horas),
+        map: obterTexturaHoras(formatarHoras(participante.horas, participante.horasTexto)),
         transparent: true,
         depthWrite: false,
         depthTest: false,

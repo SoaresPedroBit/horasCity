@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { escaparHtml } from '../util.js';
+import { escaparHtml, formatarHoras } from '../util.js';
 
 export class TooltipCidade {
   constructor(elementoId = 'tooltip') {
@@ -36,7 +36,7 @@ export class TooltipCidade {
 
     if (hit) {
       const p = hit.object.userData.participante;
-      this.el.innerHTML = `<div class="t-nome">${escaparHtml(p.apelido)}</div><div><span class="t-horas">${p.horas}h</span> Blackboard</div>`;
+      this.el.innerHTML = `<div class="t-nome">${escaparHtml(p.apelido)}</div><div><span class="t-horas">${escaparHtml(formatarHoras(p.horas, p.horasTexto))}</span> Blackboard</div>`;
       this.el.hidden = false;
       this.el.style.left = `${Math.min(this.posicaoCursor.x + 14, window.innerWidth - 260)}px`;
       this.el.style.top = `${this.posicaoCursor.y + 14}px`;

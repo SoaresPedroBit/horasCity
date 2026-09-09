@@ -1,10 +1,25 @@
 import * as THREE from 'three';
 import { MapControls } from 'three/addons/controls/MapControls.js';
-import { ConstrutorCidade } from './construtor.js';
 import { TooltipCidade } from './tooltip.js';
 
 export const LIMITES_MAPA = { RAIO: 230, ALTURA: 130 };
 
+// Libera GPU do que o modo anterior tinha criado. Todo modo cria as próprias
+// geometrias e materiais a cada build, então nada compartilhado é descartado.
+function descartarArvore(raiz) {
+  raiz.traverse((obj) => {
+    obj.geometry?.dispose();
+    const materiais = Array.isArray(obj.material) ? obj.material : obj.material ? [obj.material] : [];
+    for (const material of new Set(materiais)) {
+      material.map?.dispose();
+      material.dispose();
+    }
+  });
+}
+
+// A cena não sabe o que é um participante nem quantos prédios existem:
+// ela recebe conteúdo pronto de um modo (ver js/modos/) e cuida de câmera,
+// luz, limites do mapa, tooltip e da lista de colisores do avião.
 export class CenaCidade {
   constructor(canvas) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -23,16 +38,17 @@ export class CenaCidade {
     this.controls.minDistance = 15;
     this.controls.maxDistance = 300;
 
-    this.construtor = new ConstrutorCidade(this.renderer);
     this.tooltip = new TooltipCidade('tooltip');
 
-    this.grupoPredios = null;
-    this.grupoRuas = null;
-    this.prediosPorId = new Map();
+    // Conteúdo do modo ativo.
+    this.grupoConteudo = new THREE.Group();
+    this.scene.add(this.grupoConteudo);
     this.colisores = [];
     this.outdoors = [];
+    this.focos = new Map();
+    this.raio = 80;
+
     this.vooCamera = null;
-    this.totalParticipantes = 0;
 
     this._montarCenario();
     this._escutarRedimensionamento();
@@ -68,29 +84,43 @@ export class CenaCidade {
     this.scene.add(parede, anel);
   }
 
-  construir(participantes) {
-    this.totalParticipantes = participantes.length;
-    if (this.grupoPredios) this.scene.remove(this.grupoPredios);
-    if (this.grupoRuas) this.scene.remove(this.grupoRuas);
-    this.outdoors.forEach(o => o.userData.textura.dispose());
+  // Contrato entre cena e modo:
+  //   grupos    -> Object3D[] para pendurar na cena
+  //   colisores -> caixas para o avião ({ x, z, hx, hz, alturaColisao, participante })
+  //   outdoors  -> Object3D[] que devem sempre encarar a câmera
+  //   focos     -> Map<id, Object3D> para a câmera visitar
+  //   raio      -> raio ocupado pela cidade, para o enquadramento inicial
+  definirConteudo({ grupos = [], colisores = [], outdoors = [], focos = new Map(), raio = 80 }) {
+    this.limparConteudo();
+    grupos.forEach((g) => this.grupoConteudo.add(g));
+    this.colisores = colisores;
+    this.outdoors = outdoors;
+    this.focos = focos;
+    this.raio = raio;
+  }
 
-    const res = this.construtor.gerarMalhas(participantes);
-    this.grupoPredios = res.grupoPredios;
-    this.grupoRuas = res.grupoRuas;
-    this.prediosPorId = res.prediosPorId;
-    this.colisores = res.colisores;
-    this.outdoors = res.outdoors;
-
-    this.scene.add(this.grupoPredios, this.grupoRuas);
+  limparConteudo() {
+    for (const filho of [...this.grupoConteudo.children]) {
+      this.grupoConteudo.remove(filho);
+      descartarArvore(filho);
+    }
+    this.colisores = [];
+    this.outdoors = [];
+    this.focos = new Map();
   }
 
   posicaoGeral() {
-    const anel = Math.max(2, Math.ceil(Math.sqrt(Math.max(this.totalParticipantes, 1)) / 2));
-    const dist = Math.max(60, anel * 24 + 40);
+    const dist = Math.max(60, this.raio * 1.35);
     return {
       camera: new THREE.Vector3(dist * 0.85, dist * 0.75, dist * 0.85),
       alvo: new THREE.Vector3(0, 0, 0),
     };
+  }
+
+  enquadrarVisaoGeral() {
+    const geral = this.posicaoGeral();
+    this.camera.position.copy(geral.camera);
+    this.controls.target.copy(geral.alvo);
   }
 
   irParaVisaoGeral() {
@@ -104,10 +134,14 @@ export class CenaCidade {
     };
   }
 
-  focarNoPredio(id) {
-    const predio = this.prediosPorId.get(id);
-    if (!predio) return;
-    const p = predio.position;
+  temFoco(id) {
+    return this.focos.has(id);
+  }
+
+  focarEm(id) {
+    const alvo = this.focos.get(id);
+    if (!alvo) return false;
+    const p = alvo.position;
     this.vooCamera = {
       origemCam: this.camera.position.clone(),
       origemAlvo: this.controls.target.clone(),
@@ -115,6 +149,7 @@ export class CenaCidade {
       alvoCtrl: new THREE.Vector3(p.x, p.y, p.z),
       t: 0,
     };
+    return true;
   }
 
   atualizarCameraOrbital() {
@@ -134,7 +169,7 @@ export class CenaCidade {
       this.controls.target.z *= fator;
     }
 
-    if (this.grupoPredios) this.tooltip.atualizar(this.camera, this.grupoPredios);
+    this.tooltip.atualizar(this.camera, this.grupoConteudo);
   }
 
   orientarOutdoors() {
