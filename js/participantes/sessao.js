@@ -58,8 +58,13 @@ export function lerMinhasHoras() {
   }
 }
 
-export function salvarMinhasHoras({ horas, horasTexto }) {
-  gravar(CHAVES.horas, JSON.stringify({ horas, horasTexto: horasTexto ?? null, lidoEm: new Date().toISOString() }));
+export function salvarMinhasHoras({ horas, horasTexto, baseAtualizadaEm }) {
+  gravar(CHAVES.horas, JSON.stringify({
+    horas,
+    horasTexto: horasTexto ?? null,
+    baseAtualizadaEm: baseAtualizadaEm ?? null,
+    lidoEm: new Date().toISOString(),
+  }));
 }
 
 export function conectar({ chave, apelido, id }) {

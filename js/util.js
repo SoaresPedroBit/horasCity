@@ -8,6 +8,13 @@ export function escaparHtml(txt) {
   return div.innerHTML;
 }
 
+export function formatarDataHora(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
 // A API manda "6h 25m"; o JSON manda número decimal. Os dois caem aqui.
 export function formatarHoras(horas, horasTexto = null) {
   if (horasTexto) return horasTexto;
