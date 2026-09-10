@@ -5,7 +5,7 @@ import { ModoSolo } from '../modos/modoSolo.js';
 import { marcoCruzado } from '../modos/cenarioProgressivo.js';
 import { ModalChave } from '../participantes/modalChave.js';
 import * as sessao from '../participantes/sessao.js';
-import { escaparHtml, formatarHoras, META_HORAS } from '../util.js';
+import { escaparHtml, formatarDataHora, formatarHoras, META_HORAS } from '../util.js';
 
 export async function iniciar({ cena, piloto }) {
   const fonte = criarFonteChave();
@@ -35,15 +35,19 @@ export async function iniciar({ cena, piloto }) {
   function pintarPainel() {
     const conectado = fonte.estaConectado();
     btnAtualizar.hidden = !conectado;
-    btnMeuPredio.hidden = !(atual && cena.temFoco(atual.id));
+    btnMeuPredio.hidden = !(conectado && atual && cena.temFoco(atual.id));
     chip.hidden = false;
     chip.textContent = conectado && atual
       ? `🕒 ${formatarHoras(atual.horas, atual.horasTexto)} de ${META_HORAS}h`
-      : '👀 prévia — conecte sua chave';
+      : `👀 exemplo: a cidade em ${META_HORAS}h — conecte sua chave para ver a sua`;
+
+    const base = formatarDataHora(sessao.lerMinhasHoras()?.baseAtualizadaEm);
+    chip.title = conectado && base ? `Base de horas apurada até ${base}` : '';
   }
 
   async function atualizarHoras() {
     const antes = atual?.horas ?? 0;
+    const baseAntes = sessao.lerMinhasHoras()?.baseAtualizadaEm ?? null;
     const rotulo = btnAtualizar.textContent;
     btnAtualizar.disabled = true;
     btnAtualizar.textContent = '⏳ Consultando...';
@@ -52,10 +56,20 @@ export async function iniciar({ cena, piloto }) {
       desenhar(await fonte.atualizar());
       const marco = marcoCruzado(antes, atual.horas);
       const horas = escaparHtml(formatarHoras(atual.horas, atual.horasTexto));
-      piloto.mostrarAviso(
-        marco ? `🎉 <strong>${horas}</strong> — ${escaparHtml(marco.texto)}` : `🕒 Suas horas agora: <strong>${horas}</strong>`,
-        3800
-      );
+      const base = sessao.lerMinhasHoras()?.baseAtualizadaEm ?? null;
+
+      // Horas iguais podem ser "você não estudou" ou "a base nem foi
+      // reimportada". Só a segunda o aluno não tem como adivinhar.
+      if (marco) {
+        piloto.mostrarAviso(`🎉 <strong>${horas}</strong> — ${escaparHtml(marco.texto)}`, 3800);
+      } else if (atual.horas === antes && base && base === baseAntes) {
+        piloto.mostrarAviso(
+          `🕒 <strong>${horas}</strong> · a base não mudou desde ${escaparHtml(formatarDataHora(base))}`,
+          4200
+        );
+      } else {
+        piloto.mostrarAviso(`🕒 Suas horas agora: <strong>${horas}</strong>`, 3800);
+      }
     } catch (err) {
       piloto.mostrarAviso(`⚠️ ${escaparHtml(err?.message || 'Falha ao consultar suas horas.')}`, 4500);
     } finally {
@@ -72,7 +86,12 @@ export async function iniciar({ cena, piloto }) {
       if (piloto.ativo) piloto.alternar();
       cena.focarEm(atual.id);
     },
-    onDesconectar: () => desenhar(fonte.desconectar()),
+    // Desconectar volta para a cidade cheia da prévia: sem reenquadrar, a
+    // câmera fica presa no zoom da cidade pequena que estava ali antes.
+    onDesconectar: () => {
+      desenhar(fonte.desconectar());
+      cena.irParaVisaoGeral();
+    },
   });
 
   btnAtualizar.addEventListener('click', atualizarHoras);

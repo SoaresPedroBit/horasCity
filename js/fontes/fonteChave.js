@@ -2,10 +2,17 @@
 // toda consulta devolve exatamente um participante — o dono da chave.
 import { buscarMinhasHoras, chaveParecePlausivel, ErroApi } from '../participantes/horasApi.js';
 import * as sessao from '../participantes/sessao.js';
+import { META_HORAS } from '../util.js';
 
-// Enquanto ninguém conectou uma chave, a cidade mostra uma prévia — deixa
-// claro no apelido que aquele prédio ainda não é de ninguém.
-const PREVIA = { id: 'previa', apelido: 'Seu prédio (prévia)', horas: 6, horasTexto: null, previa: true };
+// A prévia mostra a cidade na meta: é a vitrine de onde se quer chegar. Ao
+// conectar, ela recua para as horas reais — o apelido avisa que é exemplo.
+const PREVIA = {
+  id: 'previa',
+  apelido: 'Cidade completa (exemplo)',
+  horas: META_HORAS,
+  horasTexto: null,
+  previa: true,
+};
 
 function meuParticipante({ horas, horasTexto = null }) {
   return {
