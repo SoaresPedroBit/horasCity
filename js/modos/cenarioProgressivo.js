@@ -168,10 +168,22 @@ function criarPostes(vagas) {
   return grupo;
 }
 
-// Carrinhos andando nas faixas, cada um preso a uma rua da grade.
+// Peças que se repetem dentro de um mesmo carro. O deslocamento é local: a
+// matriz do carro é aplicada por cima, então tudo gira junto com ele.
+const RODAS = [[1.05, 0.3, 0.63], [1.05, 0.3, -0.63], [-1.05, 0.3, 0.63], [-1.05, 0.3, -0.63]];
+const LUZES = [[1.66, 0.8, 0.5], [1.66, 0.8, -0.5], [-1.66, 0.82, 0.52], [-1.66, 0.82, -0.52]];
+const CORES_LUZ = [0xfff2c8, 0xfff2c8, 0xff5545, 0xff5545];
+
+function matrizesDeOffset(lista) {
+  return lista.map(([x, y, z]) => new THREE.Matrix4().makeTranslation(x, y, z));
+}
+
+// Carrinhos andando nas faixas, cada um preso a uma rua da grade. O carro é
+// montado em X: o nariz aponta para +X local, e a matriz de cada quadro gira
+// esse eixo para a direção de marcha.
 function criarCarros(quantidade, ruas, limite, aleatorio) {
   const grupo = new THREE.Group();
-  if (!quantidade) return { grupo, carros: [], malha: null };
+  if (!quantidade) return { grupo, carros: [], malhas: [] };
 
   const carros = [];
   for (let i = 0; i < quantidade; i++) {
@@ -188,15 +200,47 @@ function criarCarros(quantidade, ruas, limite, aleatorio) {
     });
   }
 
-  const malha = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(3.4, 1.3, 1.6),
+  const corpo = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(3.3, 0.72, 1.62).translate(0, 0.7, 0),
     new THREE.MeshLambertMaterial({ color: 0xffffff }),
     quantidade
   );
-  pintar(malha, carros, CORES_CARRO);
+  pintar(corpo, carros, CORES_CARRO);
 
-  grupo.add(malha);
-  return { grupo, carros, malha };
+  // Cabine recuada e mais estreita que o corpo — é o degrau da silhueta que
+  // separa "carro" de "caixa".
+  const cabine = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(1.62, 0.56, 1.4).translate(-0.22, 1.3, 0),
+    new THREE.MeshLambertMaterial({ color: 0x161b2a }),
+    quantidade
+  );
+
+  const rodas = new THREE.InstancedMesh(
+    new THREE.CylinderGeometry(0.3, 0.3, 0.24, 10).rotateX(Math.PI / 2),
+    new THREE.MeshLambertMaterial({ color: 0x14161c }),
+    quantidade * RODAS.length
+  );
+
+  const luzes = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.14, 0.16, 0.3),
+    new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    quantidade * LUZES.length
+  );
+  const cor = new THREE.Color();
+  for (let i = 0; i < quantidade; i++) {
+    CORES_LUZ.forEach((hex, k) => luzes.setColorAt(i * LUZES.length + k, cor.setHex(hex)));
+  }
+  if (luzes.instanceColor) luzes.instanceColor.needsUpdate = true;
+
+  const malhas = [
+    { mesh: corpo, offsets: null },
+    { mesh: cabine, offsets: null },
+    { mesh: rodas, offsets: matrizesDeOffset(RODAS) },
+    { mesh: luzes, offsets: matrizesDeOffset(LUZES) },
+  ];
+
+  grupo.add(corpo, cabine, rodas, luzes);
+  return { grupo, carros, malhas };
 }
 
 // Devolve o cenário pronto para a hora informada. Reconstruir é barato:
@@ -224,16 +268,18 @@ export function criarCenario({ horas, semente = 1 }) {
     limite,
     raioCelulas,
     montarCarros(ruas) {
-      const { grupo: grupoCarros, carros, malha } = criarCarros(
+      const { grupo: grupoCarros, carros, malhas } = criarCarros(
         quantidadeDePecas('carros', horas), ruas, limite, aleatorio
       );
       grupo.add(grupoCarros);
       this._carros = carros;
-      this._malhaCarros = malha;
+      this._malhasCarros = malhas;
     },
     animar(dt) {
-      if (!this._malhaCarros) return;
-      const m = new THREE.Matrix4();
+      if (!this._malhasCarros?.length) return;
+      const base = new THREE.Matrix4();
+      const peca = new THREE.Matrix4();
+
       this._carros.forEach((carro, i) => {
         carro.pos += carro.velocidade * carro.sentido * dt;
         if (carro.pos > limite) carro.pos = -limite;
@@ -242,11 +288,29 @@ export function criarCenario({ horas, semente = 1 }) {
         const desvio = carro.sentido * 2;
         const x = carro.eixoX ? carro.pos : carro.via - desvio;
         const z = carro.eixoX ? carro.via + desvio : carro.pos;
-        m.makeRotationY(carro.eixoX ? (carro.sentido > 0 ? Math.PI / 2 : -Math.PI / 2) : (carro.sentido > 0 ? 0 : Math.PI));
-        m.setPosition(x, 0.75, z);
-        this._malhaCarros.setMatrixAt(i, m);
+
+        // O nariz é +X local. Andando em X basta 0 ou π; andando em Z, ∓π/2.
+        // Antes as duas contas estavam trocadas e o carro corria de lado.
+        base.makeRotationY(
+          carro.eixoX
+            ? (carro.sentido > 0 ? 0 : Math.PI)
+            : (carro.sentido > 0 ? -Math.PI / 2 : Math.PI / 2)
+        );
+        base.setPosition(x, 0.06, z);
+
+        for (const { mesh, offsets } of this._malhasCarros) {
+          if (!offsets) {
+            mesh.setMatrixAt(i, base);
+            continue;
+          }
+          offsets.forEach((off, k) => {
+            peca.multiplyMatrices(base, off);
+            mesh.setMatrixAt(i * offsets.length + k, peca);
+          });
+        }
       });
-      this._malhaCarros.instanceMatrix.needsUpdate = true;
+
+      for (const { mesh } of this._malhasCarros) mesh.instanceMatrix.needsUpdate = true;
     },
   };
 }
