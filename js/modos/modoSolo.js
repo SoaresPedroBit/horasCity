@@ -3,6 +3,10 @@
 import { FabricaPredios, gerarGradeDeRuas, hashId } from '../cidade/pecas.js';
 import { criarCenario, raioEmCelulas } from './cenarioProgressivo.js';
 
+// O vão entre duas ruas é TAMANHO_CELULA - LARGURA_RUA = 16, ou seja ±8 do
+// centro. Base 13 + calçada 2 fecha em 15 e sobra meia unidade até o asfalto.
+const PLANTA_CENTRAL = { planta: 13, margemLote: 2 };
+
 function celulasDoQuadrado(raio) {
   const celulas = [];
   for (let cx = -raio; cx <= raio; cx++) {
@@ -30,7 +34,7 @@ export class ModoSolo {
     const cenario = criarCenario({ horas: participante.horas, semente });
     cenario.montarCarros(ruas);
 
-    const predio = this.fabrica.criar(participante, 0, 0, { escala: 1.8 });
+    const predio = this.fabrica.criar(participante, 0, 0, PLANTA_CENTRAL);
 
     this.cena.definirConteudo({
       grupos: [ruas.grupo, cenario.grupo, predio.grupo],

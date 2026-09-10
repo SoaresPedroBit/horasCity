@@ -109,13 +109,15 @@ export class FabricaPredios {
     this.texturaJanelas = criarTexturaJanelas();
   }
 
-  // escala engrossa a planta do prédio sem mexer na altura (que é só horas):
-  // no modo solo o prédio central precisa ter cara de marco da cidade.
-  criar(participante, x, z, { escala = 1 } = {}) {
+  // escala engrossa a planta sorteada pelo hash. `planta` ignora o hash e fixa
+  // uma base quadrada — no modo solo o prédio é único, então o sorteio só
+  // rendia lajes finas. `margemLote` é a calçada em volta: somada à planta,
+  // ela precisa caber no vão entre as ruas (TAMANHO_CELULA - LARGURA_RUA).
+  criar(participante, x, z, { escala = 1, planta = null, margemLote = 6 } = {}) {
     const altura = alturaParaHoras(participante.horas);
     const h = hashId(participante.id);
-    const largura = (6 + (h % 4)) * escala;
-    const profundidade = (6 + ((h >>> 4) % 4)) * escala;
+    const largura = planta ?? (6 + (h % 4)) * escala;
+    const profundidade = planta ?? (6 + ((h >>> 4) % 4)) * escala;
     const cor = PALETA[(h >>> 8) % PALETA.length];
 
     const grupo = new THREE.Group();
@@ -133,7 +135,7 @@ export class FabricaPredios {
     mesh.userData.participante = participante;
 
     const lote = new THREE.Mesh(
-      new THREE.BoxGeometry(largura + 6, 0.2, profundidade + 6),
+      new THREE.BoxGeometry(largura + margemLote, 0.2, profundidade + margemLote),
       new THREE.MeshLambertMaterial({ color: 0x222a3a })
     );
     lote.position.set(x, 0.1, z);
